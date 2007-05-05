@@ -86,11 +86,14 @@ class Worker
   # Create a new worker.
   #
   # @param job_servers  "host:port"; either a single server or an array
-  def initialize(job_servers=nil)
-    @id = 'foo'
+  # @param prefix       function name prefix (namespace)
+  def initialize(job_servers=nil, prefix=nil)
+    chars = ('a'..'z').to_a
+    @id = Array.new(30) { chars[rand(chars.size)] }.join
     @sockets = {}
     @abilities = {}
     self.job_servers = job_servers if job_servers
+    @prefix = prefix
   end
 
   ##
@@ -131,7 +134,7 @@ class Worker
   # Announce an ability over a particular socket.
   #
   # @param sock     Socket connect to a job server
-  # @param func     function name
+  # @param func     function name (including prefix)
   # @param timeout  the server will give up on us if we don't finish
   #                 a task in this many seconds
   def announce_ability(sock, func, timeout=nil)
@@ -148,10 +151,11 @@ class Worker
   # type.  It'll receive two arguments, the data supplied by the client and
   # a Job object.
   #
-  # @param func     function name
+  # @param func     function name (without prefix)
   # @param timeout  the server will give up on us if we don't finish
   #                 a task in this many seconds
   def add_ability(func, timeout=nil, &f)
+    func = (@prefix ? "#{@prefix}\t" : '') + func
     @abilities[func] = Ability.new(f, timeout)
     @sockets.values.each {|s| announce_ability(s, func, timeout) }
   end

@@ -11,6 +11,7 @@ class Client
   # Create a new client.
   #
   # @param job_servers  "host:port"; either a single server or an array
+  # @param prefix       function name prefix (namespace)
   def initialize(job_servers=nil, prefix=nil)
     @job_servers = []  # "host:port"
     self.job_servers = job_servers if job_servers
