@@ -53,11 +53,11 @@ module Gearman
 
 DEFAULT_PORT = 7003
 
-require 'client'
-require 'task'
-require 'taskset'
-require 'util'
-require 'worker'
+require 'gearman/client'
+require 'gearman/task'
+require 'gearman/taskset'
+require 'gearman/util'
+require 'gearman/worker'
 
 class InvalidArgsError < Exception
 end
