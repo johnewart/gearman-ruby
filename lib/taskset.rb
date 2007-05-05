@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
 
+require 'socket'
+require 'time'
+
 module Gearman
 
 # = TaskSet

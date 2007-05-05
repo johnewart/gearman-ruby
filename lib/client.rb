@@ -1,5 +1,7 @@
 #!/usr/bin/ruby
 
+require 'socket'
+
 module Gearman
 
 # = Client

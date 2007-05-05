@@ -21,10 +21,6 @@
 # == License
 # FIXME
 
-require 'set'
-require 'socket'
-require 'time'
-
 # = Gearman
 #
 # == Usage

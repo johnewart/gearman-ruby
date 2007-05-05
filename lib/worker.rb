@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
 
+require 'set'
+require 'socket'
+
 module Gearman
 
 # = Worker
