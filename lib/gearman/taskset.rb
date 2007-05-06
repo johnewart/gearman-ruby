@@ -32,6 +32,7 @@ class TaskSet
     # creation fails (see how the server reports this to us), or ...
     hostport = @client.get_job_server
     sock = (@sockets[hostport] or @client.get_socket(hostport))
+    Util.log "Using socket #{sock.inspect}"
     Util.send_request(sock, req)
     read_packet(sock) while @tasks_waiting_for_handle.size > 0
 
@@ -65,7 +66,7 @@ class TaskSet
   def handle_work_complete(hostport, data)
     handle, data = data.split("\0")
     Util.log "Got work_complete with handle #{handle} and " +
-      "#{data} byte(s) of data from #{hostport}"
+      "#{data ? data.size : '0'} byte(s) of data from #{hostport}"
     js_handle = Util.handle_to_str(hostport, handle)
     tasks = @tasks_in_progress.delete(js_handle)
     if not tasks
@@ -177,7 +178,12 @@ class TaskSet
     end
     @sockets.values.each {|s| @client.return_socket(s) }
     @sockets = {}
-    @finished_tasks.each {|t| return false if not t.successful }
+    @finished_tasks.each do |t|
+      if not t.successful
+        Util.log "Taskset failed"
+        return false
+      end
+    end
     true
   end
 end

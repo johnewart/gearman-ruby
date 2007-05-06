@@ -152,7 +152,9 @@ class Worker
   #
   # The passed-in block of code will be executed for jobs of this function
   # type.  It'll receive two arguments, the data supplied by the client and
-  # a Job object.
+  # a Job object.  If it returns nil or false, the server will be informed
+  # that the job has failed; otherwise the return value of the block will
+  # be passed back to the client in String form.
   #
   # @param func     function name (without prefix)
   # @param timeout  the server will give up on us if we don't finish
@@ -196,10 +198,10 @@ class Worker
     end
 
     ret = ability.run(data, Job.new(sock, handle))
-    ret = ret.to_s
 
     cmd = nil
     if ret
+      ret = ret.to_s
       Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s)"
       cmd = Util.pack_request(:work_complete, "#{handle}\0#{ret}")
     else
