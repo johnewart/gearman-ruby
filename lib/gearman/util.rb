@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'socket'
 require 'time'
@@ -65,6 +65,7 @@ class Util
   def Util.pack_request(type_name, arg='')
     type_num = NUMS[type_name.to_sym]
     raise InvalidArgsError, "Invalid type name '#{type_name}'" unless type_num
+    arg = '' if not arg
     "\0REQ" + [type_num, arg.size].pack('NN') + arg
   end
 
@@ -96,7 +97,7 @@ class Util
     head = sock.recv(12)
     magic, type, len = head.unpack('a4NN')
     raise ProtocolError, "Invalid magic '#{magic}'" unless magic == "\0RES"
-    buf = (len > 0) ? sock.recv(len) : ''
+    buf = len > 0 ? sock.recv(len) : ''
     type = COMMANDS[type]
     raise ProtocolError, "Invalid packet type #{type}" unless type
     [type, buf]

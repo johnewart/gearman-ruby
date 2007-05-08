@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 require 'set'
 require 'socket'
@@ -90,13 +90,22 @@ class Worker
   #
   # @param job_servers  "host:port"; either a single server or an array
   # @param prefix       function name prefix (namespace)
-  def initialize(job_servers=nil, prefix=nil)
+  # @param opts         hash of additional options
+  def initialize(job_servers=nil, prefix=nil, opts={})
     chars = ('a'..'z').to_a
-    @id = Array.new(30) { chars[rand(chars.size)] }.join
+    @client_id = Array.new(30) { chars[rand(chars.size)] }.join
     @sockets = {}
     @abilities = {}
-    self.job_servers = job_servers if job_servers
     @prefix = prefix
+    %w{client_id}.map {|s| s.to_sym }.each do |k|
+      instance_variable_set "@#{k}", opts[k]
+      opts.delete k
+    end
+    if opts.size > 0
+      raise InvalidArgsError,
+        'Invalid worker args: ' + opts.keys.sort.join(', ')
+    end
+    self.job_servers = job_servers if job_servers
   end
 
   ##
@@ -127,7 +136,7 @@ class Worker
   def connect(hostport)
     sock = TCPSocket.new(*hostport.split(':'))
     # FIXME: catch exceptions; do something smart
-    Util.send_request(sock, Util.pack_request(:set_client_id, @id))
+    Util.send_request(sock, Util.pack_request(:set_client_id, @client_id))
     @abilities.each {|f,a| announce_ability(sock, f, a.timeout) }
     @sockets[hostport] = sock
   end
