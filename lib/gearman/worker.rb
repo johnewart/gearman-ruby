@@ -2,6 +2,7 @@
 
 require 'set'
 require 'socket'
+require 'thread'
 
 module Gearman
 
@@ -97,7 +98,9 @@ class Worker
     @sockets = {}
     @abilities = {}
     @prefix = prefix
-    %w{client_id}.map {|s| s.to_sym }.each do |k|
+    @failed_servers = []
+    @servers_mutex = Mutex.new
+    %w{client_id reconnect_sec}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
     end
@@ -105,7 +108,24 @@ class Worker
       raise InvalidArgsError,
         'Invalid worker args: ' + opts.keys.sort.join(', ')
     end
+    @reconnect_sec = 30 if not @reconnect_sec
     self.job_servers = job_servers if job_servers
+    # FIXME: clean this up, test it, and start using it
+    #start_reconnect_thread
+  end
+
+  # Start a thread to repeatedly attempt to connect to down job servers.
+  def start_reconnect_thread
+    Thread.new do
+      loop do
+        @servers_mutex.synchronize do
+          if @failed_servers.size > 0
+            job_servers_int(@sockets.keys + @failed_servers)
+          end
+        end
+        sleep @reconnect_sec
+      end
+    end.run
   end
 
   ##
@@ -113,6 +133,17 @@ class Worker
   #
   # @param servers  "host:port"; either a single server or an array
   def job_servers=(servers)
+    @servers_mutex.synchronize do
+      job_servers_int(servers)
+    end
+  end
+
+  # Internal function to actually connect to servers.
+  # Caller must acquire @servers_mutex before calling us.
+  #
+  # @param servers  "host:port"; either a single server or an array
+  def job_servers_int(servers)
+    @failed_servers = []
     servers = Set.new(Util.normalize_job_servers(servers))
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
@@ -124,17 +155,27 @@ class Worker
     # Connect to new servers.
     servers.each do |server|
       if not @sockets[server]
-        @sockets[server] = connect(server)
+        begin
+          @sockets[server] = connect(server)
+        rescue NetworkError
+          @failed_servers << server
+          Util.log "Unable to connect to #{server}"
+        end
       end
     end
   end
+  private :job_servers_int
 
   ##
   # Connect to a job server.
   #
   # @param hostport  "hostname:port"
   def connect(hostport)
-    sock = TCPSocket.new(*hostport.split(':'))
+    begin
+      sock = TCPSocket.new(*hostport.split(':'))
+    rescue Errno::ECONNREFUSED
+      raise NetworkError
+    end
     # FIXME: catch exceptions; do something smart
     Util.send_request(sock, Util.pack_request(:set_client_id, @client_id))
     @abilities.each {|f,a| announce_ability(sock, f, a.timeout) }
@@ -236,6 +277,8 @@ class Worker
           type, data = Util.read_response(sock)
           case type
           when :noop
+            # FIXME: double-check this... can we really just blindly read
+            # when we get a noop without selecting first?
             Util.log "Got noop"
             next
           when :no_job

@@ -58,5 +58,59 @@ class TestWorker < Test::Unit::TestCase
   end
 
   def test_multiple_servers
+    server1 = FakeJobServer.new(self)
+    server2 = FakeJobServer.new(self)
+    worker = nil
+    sock1, sock2 = nil
+
+    s1 = TestScript.new
+    s2 = TestScript.new
+    w = TestScript.new
+
+    server1_thread = Thread.new { s1.loop_forever }.run
+    server2_thread = Thread.new { s2.loop_forever }.run
+    worker_thread = Thread.new { w.loop_forever }.run
+
+    # Create a worker, which should connect to both servers.
+    w.exec { worker = Gearman::Worker.new(nil, nil, { :client_id => 'test' }) }
+    w.exec { worker.add_ability('foo') {|d,j| 'bar' } }
+    w.exec {
+      worker.job_servers =
+        [ "localhost:#{server1.port}", "localhost:#{server2.port}" ]
+    }
+    s1.exec { sock1 = server1.expect_connection }
+    s2.exec { sock2 = server2.expect_connection }
+    s1.wait
+    s2.wait
+
+    # It should register itself with both.
+    s1.exec { server1.expect_request(sock1, :set_client_id, 'test') }
+    s1.exec { server1.expect_request(sock1, :can_do, 'foo') }
+    s2.exec { server2.expect_request(sock2, :set_client_id, 'test') }
+    s2.exec { server2.expect_request(sock2, :can_do, 'foo') }
+
+    # It should try to get a job from both servers and then sleep.
+    w.exec { worker.work }
+    s1.exec { server1.expect_request(sock1, :grab_job) }
+    s1.exec { server1.send_response(sock1, :no_job) }
+    s2.exec { server2.expect_request(sock2, :grab_job) }
+    s2.exec { server2.send_response(sock2, :no_job) }
+    s1.exec { server1.expect_request(sock1, :pre_sleep) }
+    s2.exec { server2.expect_request(sock2, :pre_sleep) }
+
+    # If the second server wakes it up, it should again try to get a job
+    # and then do it.
+    s2.exec { server2.send_response(sock2, :noop) }
+    s1.exec { server1.expect_request(sock1, :grab_job) }
+    s1.exec { server1.send_response(sock1, :no_job) }
+    s2.exec { server2.expect_request(sock2, :grab_job) }
+    s2.exec { server2.send_response(sock2, :job_assign, "a\0foo\0") }
+    s2.exec { server2.expect_request(sock2, :work_complete, "a\0bar") }
+
+    # FIXME: We're not going through the servers in a guaranteed order, so
+    # s1 may never get a second grab_job.  Need to figure out how to deal
+    # with this...
+    #s1.wait
+    s2.wait
   end
 end

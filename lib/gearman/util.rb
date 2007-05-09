@@ -86,18 +86,40 @@ class Util
   end
 
   ##
+  # Read from a socket, giving up if it doesn't finish quickly enough.
+  # NetworkError is thrown if we don't read all the bytes in time.
+  #
+  # @param sock     Socket from which we read
+  # @param len      number of bytes to read
+  # @param timeout  maximum number of seconds we'll take; nil for no timeout
+  # @return         full data that was read
+  def Util.timed_recv(sock, len, timeout=nil)
+    data = ''
+    end_time = Time.now.to_f + timeout if timeout
+    while data.size < len and (not timeout or Time.now.to_f < end_time) do
+      IO::select([sock], nil, nil, timeout ? end_time - Time.now.to_f : nil) \
+        or break
+      data += sock.readpartial(len - data.size)
+    end
+    if data.size < len
+      raise NetworkError, "Read #{data.size} byte(s) instead of #{len}"
+    end
+    data
+  end
+
+  ##
   # Read a response packet from a socket.
   #
   # @param sock     Socket connected to a job server
-  # @param timeout  timeout in seconds, 0 to disable (grr, doesn't work)
+  # @param timeout  timeout in seconds, nil for no timeout
   # @return         array consisting of integer packet type and data
-  def Util.read_response(sock, timeout=0)
-    # FIXME: use a non-blocking socket and do the work ourselves, i guess...
-    #sock.setsockopt(Socket::IPPROTO_TCP, Socket::SO_RCVTIMEO, timeout)
-    head = sock.recv(12)
+  def Util.read_response(sock, timeout=nil)
+    end_time = Time.now.to_f + timeout if timeout
+    head = timed_recv(sock, 12, timeout)
     magic, type, len = head.unpack('a4NN')
     raise ProtocolError, "Invalid magic '#{magic}'" unless magic == "\0RES"
-    buf = len > 0 ? sock.recv(len) : ''
+    buf = len > 0 ?
+      timed_recv(sock, len, timeout ? end_time - Time.now.to_f : nil) : ''
     type = COMMANDS[type]
     raise ProtocolError, "Invalid packet type #{type}" unless type
     [type, buf]

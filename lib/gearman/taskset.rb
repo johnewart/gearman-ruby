@@ -16,6 +16,7 @@ class TaskSet
     @tasks_in_progress = {}  # "host:port//handle" -> [job1, job2, ...]
     @finished_tasks = []  # tasks that have completed or failed
     @sockets = {}  # "host:port" -> Socket
+    @merge_hash_to_hostport = {}  # Fixnum -> "host:port"
   end
 
   ##
@@ -28,11 +29,13 @@ class TaskSet
     req = task.get_submit_packet(@client.prefix)
 
     @tasks_waiting_for_handle << task
-    # we need to loop here in case we get a bad job server, or the job
-    # creation fails (see how the server reports this to us), or ...
-    hostport = @client.get_job_server
+    # FIXME: We need to loop here in case we get a bad job server, or the
+    # job creation fails (see how the server reports this to us), or ...
+    merge_hash = task.get_hash_for_merging
+    hostport = (@merge_hash_to_hostport[merge_hash] or @client.get_job_server)
+    @merge_hash_to_hostport[merge_hash] = hostport if merge_hash
     sock = (@sockets[hostport] or @client.get_socket(hostport))
-    Util.log "Using socket #{sock.inspect}"
+    Util.log "Using socket #{sock.inspect} for #{hostport}"
     Util.send_request(sock, req)
     read_packet(sock) while @tasks_waiting_for_handle.size > 0
 

@@ -92,6 +92,17 @@ class Task
   end
 
   ##
+  # Return a hash that we can use to execute identical tasks on the same
+  # job server.
+  #
+  # @return  hashed value, based on @arg if @uniq is '-', on @uniq if it's
+  #          set to something else, and just nil if @uniq is nil
+  def get_hash_for_merging
+    merge_on = @uniq and @uniq == '-' ? @arg : @uniq
+    merge_on ? merge_on.hash : nil
+  end
+
+  ##
   # Construct a packet to submit this task to a job server.
   #
   # @param background  ??

@@ -64,7 +64,7 @@ class Client
         return sock
       end
     end
-    raise RuntimeError, "Unable to connect to job server"
+    raise RuntimeError, "Unable to connect to job server #{hostport}"
   end
 
   ##
