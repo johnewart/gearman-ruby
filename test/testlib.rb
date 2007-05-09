@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+
+require 'socket'
+require 'thread'
+
+class FakeJobServer
+  def initialize(tester)
+    @tester = tester
+    @serv = TCPserver.open(0)
+    @port = @serv.addr[1]
+  end
+  attr_reader :port
+
+  def expect_connection
+    sock = @serv.accept
+    return sock
+  end
+
+  def expect_closed(sock)
+    @tester.assert_true(sock.closed?)
+  end
+
+  def expect_request(sock, exp_type, exp_data='')
+    head = sock.recv(12)
+    magic, type, len = head.unpack('a4NN')
+    @tester.assert_equal("\0REQ", magic)
+    @tester.assert_equal(Gearman::Util::NUMS[exp_type.to_sym], type)
+    data = len > 0 ? sock.recv(len) : ''
+    @tester.assert_equal(exp_data, data)
+  end
+
+  def send_response(sock, type, data='')
+    type_num = Gearman::Util::NUMS[type.to_sym]
+    response = "\0RES" + [type_num, data.size].pack('NN') + data
+    sock.write(response)
+  end
+end
+
+class TestScript
+  def initialize
+    @mutex = Mutex.new
+    @cv = ConditionVariable.new
+    @blocks = []
+  end
+
+  def loop_forever
+    loop do
+      f = nil
+      @mutex.synchronize do
+        @cv.wait(@mutex) if @blocks.empty?
+        f = @blocks.shift
+      end
+      f.call if f
+      @mutex.synchronize do
+        @cv.signal if @blocks.empty?
+      end
+    end
+  end
+
+  def exec(&f)
+    @mutex.synchronize do
+      @blocks << f
+      @cv.signal
+    end
+  end
+
+  def wait
+    @mutex.synchronize do
+      @cv.wait(@mutex) if not @blocks.empty?
+    end
+  end
+end
