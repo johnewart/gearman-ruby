@@ -39,6 +39,7 @@ class FakeJobServer
 
   def send_response(sock, type, data='')
     type_num = Gearman::Util::NUMS[type.to_sym]
+    raise RuntimeError, "Invalid type #{type}" if not type_num
     response = "\0RES" + [type_num, data.size].pack('NN') + data
     sock.write(response)
   end
