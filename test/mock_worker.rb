@@ -121,8 +121,6 @@ class TestWorker < Test::Unit::TestCase
     s1.wait
     s2.wait
 
-    worker.network_timeout_sec = 0.1
-
     # Stop the first job server and make the worker try to reconnect to
     # both.
     old_servers = worker.job_servers
@@ -161,5 +159,42 @@ class TestWorker < Test::Unit::TestCase
     s1.wait
     s2.wait
     w.wait
+  end
+
+  def test_timeout
+    server = FakeJobServer.new(self)
+    worker = nil
+    sock = nil
+
+    s = TestScript.new
+    w = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    worker_thread = Thread.new { w.loop_forever }.run
+
+    w.exec {
+      worker = Gearman::Worker.new("localhost:#{server.port}", nil,
+        { :client_id => 'test',
+          :reconnect_sec => 0.1,
+          :network_timeout_sec => 0.1 })
+    }
+    s.exec { sock = server.expect_connection }
+    s.wait
+    s.exec { server.expect_request(sock, :set_client_id, 'test') }
+
+    w.exec { worker.add_ability('foo') {|d,j| 'bar' } }
+    s.exec { server.expect_request(sock, :can_do, 'foo') }
+
+    w.exec { worker.work }
+    s.exec { server.expect_request(sock, :grab_job) }
+    s.exec { sleep 0.11 }
+    s.wait
+
+    s.exec { sock = server.expect_connection }
+    s.wait
+    s.exec { server.expect_request(sock, :set_client_id, 'test') }
+    s.exec { server.expect_request(sock, :can_do, 'foo') }
+    s.exec { server.expect_request(sock, :grab_job) }
+    s.wait
   end
 end

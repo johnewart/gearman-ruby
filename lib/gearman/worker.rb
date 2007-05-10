@@ -30,11 +30,6 @@ module Gearman
 #  end
 #  loop { w.work }
 class Worker
-  # Number of seconds to sleep when we don't have work before polling the
-  # job server again (if a job comes in while we're sleeping, the server
-  # will wake us up).
-  SLEEP_SEC = 10
-
   # = Ability
   #
   # == Description
@@ -98,7 +93,7 @@ class Worker
     @sockets = {}  # "host:port" -> Socket
     @abilities = {}  # "funcname" -> Ability
     @prefix = prefix
-    @failed_servers = []  # "host:port"
+    @bad_servers = []  # "host:port"
     @servers_mutex = Mutex.new
     %w{client_id reconnect_sec
        network_timeout_sec}.map {|s| s.to_sym }.each do |k|
@@ -122,8 +117,8 @@ class Worker
       loop do
         @servers_mutex.synchronize do
           # If there are any failed servers, try to reconnect to them.
-          if not @failed_servers.empty?
-            update_job_servers(@sockets.keys + @failed_servers)
+          if not @bad_servers.empty?
+            update_job_servers(@sockets.keys + @bad_servers)
           end
         end
         sleep @reconnect_sec
@@ -134,7 +129,7 @@ class Worker
   def job_servers
     servers = nil
     @servers_mutex.synchronize do
-      servers = @sockets.keys + @failed_servers
+      servers = @sockets.keys + @bad_servers
     end
     servers
   end
@@ -154,7 +149,7 @@ class Worker
   #
   # @param servers  "host:port"; either a single server or an array
   def update_job_servers(servers)
-    @failed_servers = []
+    @bad_servers = []
     servers = Set.new(Util.normalize_job_servers(servers))
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
@@ -171,7 +166,7 @@ class Worker
           Util.log "Connecting to server #{server}"
           @sockets[server] = connect(server)
         rescue NetworkError
-          @failed_servers << server
+          @bad_servers << server
           Util.log "Unable to connect to #{server}"
         end
       end
@@ -283,40 +278,61 @@ class Worker
   ##
   # Do a single job and return.
   def work
+    req = Util.pack_request(:grab_job)
     loop do
-      req = Util.pack_request(:grab_job)
+      bad_servers = []
       # We iterate through the servers in sorted order to make testing
       # easier.
-      @sockets.keys.sort.each do |hostport|
+      servers = nil
+      @servers_mutex.synchronize { servers = @sockets.keys.sort }
+      servers.each do |hostport|
         Util.log "Sending grab_job to #{hostport}"
         sock = @sockets[hostport]
         Util.send_request(sock, req)
+
         # Now that we've sent grab_job, we need to keep reading packets
         # until we see a no_job or job_assign response (there may be a noop
         # waiting for us in response to a previous pre_sleep).
         loop do
-          type, data = Util.read_response(sock)
+          begin
+            type, data = Util.read_response(sock, @network_timeout_sec)
+          rescue NetworkError
+            Util.log "Server #{hostport} timed out; marking bad"
+            bad_servers << hostport
+            break
+          end
           case type
           when :no_job
             Util.log "Got no_job from #{hostport}"
             break
           when :job_assign
             return if handle_job_assign(data, sock, hostport)
+            break
           else
-            # Keep on reading until we get a response to our grab_job
-            # (either no_job or job_assign).
             Util.log "Got #{type.to_s} from #{hostport}"
           end
         end
       end
-      Util.log "Sending pre_sleep and going to sleep for #{SLEEP_SEC} sec"
-      @sockets.values.each do |sock|
-        Util.send_request(sock, Util.pack_request(:pre_sleep))
+
+      @servers_mutex.synchronize do
+        bad_servers.each do |hostport|
+          @sockets[hostport].close if @sockets[hostport]
+          @bad_servers << hostport if @sockets[hostport]
+          @sockets.delete(hostport)
+        end
       end
+
+      Util.log "Sending pre_sleep and going to sleep for #{2 * @reconnect_sec} sec"
+      @servers_mutex.synchronize do
+        @sockets.values.each do |sock|
+          Util.send_request(sock, Util.pack_request(:pre_sleep))
+        end
+      end
+
       # FIXME: We could optimize things the next time through the 'each' by
       # sending the first grab_job to one of the servers that had a socket
       # with data in it.  Not bothering with it for now.
-      IO::select(@sockets.values, nil, nil, SLEEP_SEC)
+      IO::select(@sockets.values, nil, nil, 2 * @reconnect_sec)
     end
   end
 end
