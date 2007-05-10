@@ -11,6 +11,14 @@ class FakeJobServer
   end
   attr_reader :port
 
+  def stop
+    @serv.close
+  end
+
+  def start
+    @serv = TCPserver.open(@port)
+  end
+
   def expect_connection
     sock = @serv.accept
     return sock
@@ -48,10 +56,11 @@ class TestScript
       f = nil
       @mutex.synchronize do
         @cv.wait(@mutex) if @blocks.empty?
-        f = @blocks.shift
+        f = @blocks[0] if not @blocks.empty?
       end
       f.call if f
       @mutex.synchronize do
+        @blocks.shift
         @cv.signal if @blocks.empty?
       end
     end

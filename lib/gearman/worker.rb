@@ -95,12 +95,13 @@ class Worker
   def initialize(job_servers=nil, prefix=nil, opts={})
     chars = ('a'..'z').to_a
     @client_id = Array.new(30) { chars[rand(chars.size)] }.join
-    @sockets = {}
-    @abilities = {}
+    @sockets = {}  # "host:port" -> Socket
+    @abilities = {}  # "funcname" -> Ability
     @prefix = prefix
-    @failed_servers = []
+    @failed_servers = []  # "host:port"
     @servers_mutex = Mutex.new
-    %w{client_id reconnect_sec}.map {|s| s.to_sym }.each do |k|
+    %w{client_id reconnect_sec
+       network_timeout_sec}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
     end
@@ -109,23 +110,33 @@ class Worker
         'Invalid worker args: ' + opts.keys.sort.join(', ')
     end
     @reconnect_sec = 30 if not @reconnect_sec
+    @network_timeout_sec = 5 if not @network_timeout_sec
     self.job_servers = job_servers if job_servers
-    # FIXME: clean this up, test it, and start using it
-    #start_reconnect_thread
+    start_reconnect_thread
   end
+  attr_accessor :client_id, :reconnect_sec, :network_timeout_sec
 
   # Start a thread to repeatedly attempt to connect to down job servers.
   def start_reconnect_thread
     Thread.new do
       loop do
         @servers_mutex.synchronize do
-          if @failed_servers.size > 0
-            job_servers_int(@sockets.keys + @failed_servers)
+          # If there are any failed servers, try to reconnect to them.
+          if not @failed_servers.empty?
+            update_job_servers(@sockets.keys + @failed_servers)
           end
         end
         sleep @reconnect_sec
       end
     end.run
+  end
+
+  def job_servers
+    servers = nil
+    @servers_mutex.synchronize do
+      servers = @sockets.keys + @failed_servers
+    end
+    servers
   end
 
   ##
@@ -134,7 +145,7 @@ class Worker
   # @param servers  "host:port"; either a single server or an array
   def job_servers=(servers)
     @servers_mutex.synchronize do
-      job_servers_int(servers)
+      update_job_servers(servers)
     end
   end
 
@@ -142,13 +153,14 @@ class Worker
   # Caller must acquire @servers_mutex before calling us.
   #
   # @param servers  "host:port"; either a single server or an array
-  def job_servers_int(servers)
+  def update_job_servers(servers)
     @failed_servers = []
     servers = Set.new(Util.normalize_job_servers(servers))
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
-      if not servers[server]
-        sock.disconnect
+      if not servers.include? server
+        Util.log "Disconnecting from old server #{server}"
+        sock.close
         @sockets.delete(server)
       end
     end
@@ -156,6 +168,7 @@ class Worker
     servers.each do |server|
       if not @sockets[server]
         begin
+          Util.log "Connecting to server #{server}"
           @sockets[server] = connect(server)
         rescue NetworkError
           @failed_servers << server
@@ -164,7 +177,7 @@ class Worker
       end
     end
   end
-  private :job_servers_int
+  private :update_job_servers
 
   ##
   # Connect to a job server.
@@ -172,6 +185,7 @@ class Worker
   # @param hostport  "hostname:port"
   def connect(hostport)
     begin
+      # FIXME: handle timeouts
       sock = TCPSocket.new(*hostport.split(':'))
     rescue Errno::ECONNREFUSED
       raise NetworkError
@@ -228,21 +242,23 @@ class Worker
   ##
   # Handle a job_assign packet.
   #
-  # @param data  data in the packet
-  # @param sock  Socket on which the packet arrived
-  def handle_job_assign(data, sock)
+  # @param data      data in the packet
+  # @param sock      Socket on which the packet arrived
+  # @param hostport  "host:port"
+  def handle_job_assign(data, sock, hostport)
     handle, func, data = data.split("\0", 3)
     if not func
-      Util.err "Ignoring job_assign with no function"
+      Util.err "Ignoring job_assign with no function from #{hostport}"
       return false
     end
 
-    Util.log "Got job_assign with handle #{handle} and #{data.size} byte(s)"
+    Util.log "Got job_assign with handle #{handle} and #{data.size} byte(s) " +
+      "from #{hostport}"
 
     ability = @abilities[func]
     if not ability
       Util.err "Ignoring job_assign for unsupported func #{func} " +
-        "with handle #{handle}"
+        "with handle #{handle} from #{hostport}"
       Util.send_request(sock, Util.pack_request(:work_fail, handle))
       return false
     end
@@ -252,10 +268,11 @@ class Worker
     cmd = nil
     if ret
       ret = ret.to_s
-      Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s)"
+      Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s) " +
+        "to #{hostport}"
       cmd = Util.pack_request(:work_complete, "#{handle}\0#{ret}")
     else
-      Util.log "Sending work_fail for #{handle}"
+      Util.log "Sending work_fail for #{handle} to #{hostport}"
       cmd = Util.pack_request(:work_fail, handle)
     end
 
@@ -267,27 +284,28 @@ class Worker
   # Do a single job and return.
   def work
     loop do
-      @sockets.values.each do |sock|
-        Util.log "Sending grab_job"
-        Util.send_request(sock, Util.pack_request(:grab_job))
+      req = Util.pack_request(:grab_job)
+      # We iterate through the servers in sorted order to make testing
+      # easier.
+      @sockets.keys.sort.each do |hostport|
+        Util.log "Sending grab_job to #{hostport}"
+        sock = @sockets[hostport]
+        Util.send_request(sock, req)
         # Now that we've sent grab_job, we need to keep reading packets
         # until we see a no_job or job_assign response (there may be a noop
         # waiting for us in response to a previous pre_sleep).
         loop do
           type, data = Util.read_response(sock)
           case type
-          when :noop
-            # FIXME: double-check this... can we really just blindly read
-            # when we get a noop without selecting first?
-            Util.log "Got noop"
-            next
           when :no_job
-            Util.log "Got no_job"
+            Util.log "Got no_job from #{hostport}"
             break
           when :job_assign
-            return if handle_job_assign(data, sock)
+            return if handle_job_assign(data, sock, hostport)
           else
-            Util.log "Got #{type.to_s}"
+            # Keep on reading until we get a response to our grab_job
+            # (either no_job or job_assign).
+            Util.log "Got #{type.to_s} from #{hostport}"
           end
         end
       end
@@ -295,6 +313,9 @@ class Worker
       @sockets.values.each do |sock|
         Util.send_request(sock, Util.pack_request(:pre_sleep))
       end
+      # FIXME: We could optimize things the next time through the 'each' by
+      # sending the first grab_job to one of the servers that had a socket
+      # with data in it.  Not bothering with it for now.
       IO::select(@sockets.values, nil, nil, SLEEP_SEC)
     end
   end
