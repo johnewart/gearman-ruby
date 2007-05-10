@@ -175,7 +175,7 @@ class TestWorker < Test::Unit::TestCase
     w.exec {
       worker = Gearman::Worker.new("localhost:#{server.port}", nil,
         { :client_id => 'test',
-          :reconnect_sec => 0.1,
+          :reconnect_sec => 0.15,
           :network_timeout_sec => 0.1 })
     }
     s.exec { sock = server.expect_connection }
@@ -185,16 +185,22 @@ class TestWorker < Test::Unit::TestCase
     w.exec { worker.add_ability('foo') {|d,j| 'bar' } }
     s.exec { server.expect_request(sock, :can_do, 'foo') }
 
+    # Don't do anything after the client asks for a job.
     w.exec { worker.work }
     s.exec { server.expect_request(sock, :grab_job) }
-    s.exec { sleep 0.11 }
+    s.exec { sleep 0.16 }
     s.wait
 
+    # The client should reconnect and ask for a job again.
     s.exec { sock = server.expect_connection }
     s.wait
+
     s.exec { server.expect_request(sock, :set_client_id, 'test') }
     s.exec { server.expect_request(sock, :can_do, 'foo') }
     s.exec { server.expect_request(sock, :grab_job) }
+    s.exec { server.send_response(sock, :job_assign, "a\0foo\0") }
+    s.exec { server.expect_request(sock, :work_complete, "a\0bar") }
     s.wait
+    w.wait
   end
 end

@@ -21,25 +21,25 @@ class TestClient < Test::Unit::TestCase
 
     c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
 
-    c.exec { task1 = Gearman::Task.new('add', '5 + 2') }
+    c.exec { task1 = Gearman::Task.new('add', '5 2') }
     c.exec { task1.on_complete {|d| res1 = d.to_i } }
     c.exec { taskset = Gearman::TaskSet.new(client) }
     c.exec { taskset.add_task(task1) }
     s.exec { sock = server.expect_connection }
     s.wait
 
-    s.exec { server.expect_request(sock, :submit_job, "add\000\0005 + 2") }
+    s.exec { server.expect_request(sock, :submit_job, "add\000\0005 2") }
     s.exec { server.send_response(sock, :job_created, "a") }
 
     # Create a second task.  It should use the same socket as the first.
-    c.exec { task2 = Gearman::Task.new('add', '10 + 5') }
+    c.exec { task2 = Gearman::Task.new('add', '10 5') }
     c.exec { task2.on_complete {|d| res2 = d.to_i } }
     c.exec { taskset.add_task(task2) }
 
     # Return the response to the first job before the handle for the
     # second.
     s.exec { server.send_response(sock, :work_complete, "a\0007") }
-    s.exec { server.expect_request(sock, :submit_job, "add\000\00010 + 5") }
+    s.exec { server.expect_request(sock, :submit_job, "add\000\00010 5") }
     s.exec { server.send_response(sock, :job_created, "b") }
 
     # After the client waits on the taskset, send the response to the

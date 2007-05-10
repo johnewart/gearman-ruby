@@ -322,7 +322,7 @@ class Worker
         end
       end
 
-      Util.log "Sending pre_sleep and going to sleep for #{2 * @reconnect_sec} sec"
+      Util.log "Sending pre_sleep and going to sleep for #{@reconnect_sec} sec"
       @servers_mutex.synchronize do
         @sockets.values.each do |sock|
           Util.send_request(sock, Util.pack_request(:pre_sleep))
@@ -332,7 +332,7 @@ class Worker
       # FIXME: We could optimize things the next time through the 'each' by
       # sending the first grab_job to one of the servers that had a socket
       # with data in it.  Not bothering with it for now.
-      IO::select(@sockets.values, nil, nil, 2 * @reconnect_sec)
+      IO::select(@sockets.values, nil, nil, @reconnect_sec)
     end
   end
 end
