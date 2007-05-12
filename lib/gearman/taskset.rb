@@ -67,7 +67,7 @@ class TaskSet
   # @param hostport  "host:port" of job server
   # @param data      data returned in packet from server
   def handle_work_complete(hostport, data)
-    handle, data = data.split("\0")
+    handle, data = data.split("\0", 2)
     Util.log "Got work_complete with handle #{handle} and " +
       "#{data ? data.size : '0'} byte(s) of data from #{hostport}"
     js_handle = Util.handle_to_str(hostport, handle)
@@ -113,7 +113,7 @@ class TaskSet
   # @param hostport  "host:port" of job server
   # @param data      data returned in packet from server
   def handle_work_status(hostport, data)
-    handle, num, den = data.split("\0")
+    handle, num, den = data.split("\0", 3)
     Util.log "Got work_status with handle #{handle} from #{hostport}: " +
       "#{num}/#{den}"
     js_handle = Util.handle_to_str(hostport, handle)

@@ -353,4 +353,31 @@ class TestClient < Test::Unit::TestCase
     assert_equal(1, res2)
     assert_equal(2, res3)
   end
+
+  ##
+  # Test that NUL bytes in returned data are preserved.
+  def test_nuls_in_data
+    server = FakeJobServer.new(self)
+    client, sock, res = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { res = client.do_task('foo', nil) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job, "foo\000\000") }
+    s.exec { server.send_response(sock, :job_created, 'a') }
+    s.exec { server.send_response(sock, :work_complete, "a\0001\0002\0003") }
+    c.wait
+    s.wait
+
+    assert_equal("1\0002\0003", res)
+  end
 end
