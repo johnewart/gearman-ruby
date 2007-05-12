@@ -27,6 +27,7 @@ class Task
     @retry_count ||= 0
     @successful = false
     @retries_done = 0
+    @hash = nil
   end
   attr_accessor :uniq, :retry_count, :high_priority
   attr_reader :successful
@@ -97,9 +98,10 @@ class Task
   #
   # @return  hashed value, based on @arg if @uniq is '-', on @uniq if it's
   #          set to something else, and just nil if @uniq is nil
-  def get_hash_for_merging
-    merge_on = @uniq and @uniq == '-' ? @arg : @uniq
-    merge_on ? merge_on.hash : nil
+  def get_uniq_hash
+    return @hash if @hash
+    merge_on = (@uniq and @uniq == '-') ? @arg : @uniq
+    @hash = merge_on ? merge_on.hash.to_s : ''
   end
 
   ##
@@ -111,7 +113,7 @@ class Task
     mode = 'submit_job' +
       (background ? '_bg' : @high_priority ? '_high' : '')
     func = (prefix ? prefix + "\t" : '') + @func
-    Util::pack_request(mode, [func, (@uniq or ''), arg].join("\0"))
+    Util::pack_request(mode, [func, get_uniq_hash, arg].join("\0"))
   end
 
   attr_reader :func, :arg, :finished

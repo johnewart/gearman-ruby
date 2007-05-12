@@ -20,9 +20,10 @@ class Client
     @prefix = prefix
     @sockets = {}  # "host:port" -> [sock1, sock2, ...]
     @socket_to_hostport = {}  # sock -> "host:port"
+    @test_hostport = nil  # make get_job_server return a given host for testing
   end
   attr_reader :job_servers
-  attr_accessor :prefix
+  attr_accessor :prefix, :test_hostport
 
   ##
   # Set the job servers to be used by this client.
@@ -39,7 +40,8 @@ class Client
   #
   # @return  "host:port"
   def get_job_server
-    @job_servers[rand(@job_servers.size)]
+    # Return a specific server if one's been set.
+    @test_hostport or @job_servers[rand(@job_servers.size)]
   end
 
   ##

@@ -31,7 +31,7 @@ class TaskSet
     @tasks_waiting_for_handle << task
     # FIXME: We need to loop here in case we get a bad job server, or the
     # job creation fails (see how the server reports this to us), or ...
-    merge_hash = task.get_hash_for_merging
+    merge_hash = task.get_uniq_hash
     hostport = (@merge_hash_to_hostport[merge_hash] or @client.get_job_server)
     @merge_hash_to_hostport[merge_hash] = hostport if merge_hash
     sock = (@sockets[hostport] or @client.get_socket(hostport))
