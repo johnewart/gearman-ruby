@@ -380,4 +380,52 @@ class TestClient < Test::Unit::TestCase
 
     assert_equal("1\0002\0003", res)
   end
+
+  ##
+  # Test that clients time out when the server sends a partial packet and
+  # then hangs.
+  def test_read_timeouts
+    server = FakeJobServer.new(self)
+    client, sock, task, taskset, res = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    # First, create a new task.  The server claims to be sending back a
+    # packet with 1 byte of data, but actually sends an empty packet.  The
+    # client should time out after 0.1 sec.
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { task = Gearman::Task.new('foo', 'bar') }
+    c.exec { client.task_create_timeout_sec = 0.1 }
+    c.exec { res = taskset.add_task(task) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job, "foo\000\000bar") }
+    s.exec { server.send_response(sock, :job_created, '', 1) }
+    c.wait
+    s.wait
+
+    assert_equal(false, res)
+
+    # Now create a task, but only return a partial packet for
+    # work_complete.  The client should again time out after 0.1 sec.
+    c.exec { res = taskset.add_task(task) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job, "foo\000\000bar") }
+    s.exec { server.send_response(sock, :job_created, 'a') }
+    c.exec { res = taskset.wait(0.1) }
+    s.exec { server.send_response(sock, :work_complete, "a\000", 3) }
+    c.wait
+    s.wait
+
+    assert_equal(false, res)
+  end
 end

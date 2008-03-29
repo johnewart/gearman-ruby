@@ -12,7 +12,7 @@ module Gearman
 class TaskSet
   def initialize(client)
     @client = client
-    @tasks_waiting_for_handle = []
+    @task_waiting_for_handle = nil
     @tasks_in_progress = {}  # "host:port//handle" -> [job1, job2, ...]
     @finished_tasks = []  # tasks that have completed or failed
     @sockets = {}  # "host:port" -> Socket
@@ -26,9 +26,23 @@ class TaskSet
   # @return      true if the task was created successfully, false otherwise
   def add_task(*args)
     task = Util::get_task_from_args(*args)
+    add_task_internal(task, true)
+  end
+
+  ##
+  # Internal function to add a task.
+  #
+  # @param task         Task to add
+  # @param reset_state  should we reset task state?  true if we're adding a
+  #                     new task; false if we're rescheduling one that's
+  #                     failed
+  # @return             true if the task was created successfully, false
+  #                     otherwise
+  def add_task_internal(task, reset_state=true)
+    task.reset_state if reset_state
     req = task.get_submit_packet(@client.prefix)
 
-    @tasks_waiting_for_handle << task
+    @task_waiting_for_handle = task
     # FIXME: We need to loop here in case we get a bad job server, or the
     # job creation fails (see how the server reports this to us), or ...
     merge_hash = task.get_uniq_hash
@@ -37,11 +51,21 @@ class TaskSet
     sock = (@sockets[hostport] or @client.get_socket(hostport))
     Util.log "Using socket #{sock.inspect} for #{hostport}"
     Util.send_request(sock, req)
-    read_packet(sock) while @tasks_waiting_for_handle.size > 0
+    while @task_waiting_for_handle
+      begin
+        read_packet(sock, @client.task_create_timeout_sec)
+      rescue NetworkError
+        Util.log "Got timeout on read from #{hostport}"
+        @task_waiting_for_handle = nil
+        @client.close_socket(sock)
+        return false
+      end
+    end
 
     @sockets[hostport] ||= sock
     true
   end
+  private :add_task_internal
 
   ##
   # Handle a 'job_created' response from a job server.
@@ -50,12 +74,13 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_job_created(hostport, data)
     Util.log "Got job_created with handle #{data} from #{hostport}"
-    if @tasks_waiting_for_handle.empty?
+    if not @task_waiting_for_handle
       raise ProtocolError, "Got unexpected job_created notification " +
         "with handle #{data} from #{hostport}"
     end
     js_handle = Util.handle_to_str(hostport, data)
-    task = @tasks_waiting_for_handle.shift
+    task = @task_waiting_for_handle
+    @task_waiting_for_handle = nil
     (@tasks_in_progress[js_handle] ||= []) << task
     nil
   end
@@ -99,7 +124,7 @@ class TaskSet
     end
     tasks.each do |t|
       if t.handle_failure
-        add_task(t)
+        add_task_internal(t, false)
       else
         @finished_tasks << t
       end
@@ -130,13 +155,13 @@ class TaskSet
   # Read and process a packet from a socket.
   #
   # @param sock  socket connected to a job server
-  def read_packet(sock)
+  def read_packet(sock, timeout=nil)
     hostport = @client.get_hostport_for_socket(sock)
     if not hostport
       raise RuntimeError, "Client doesn't know host/port for socket " +
         sock.inspect
     end
-    type, data = Util.read_response(sock)
+    type, data = Util.read_response(sock, timeout)
     case type
     when :job_created
       handle_job_created(hostport, data)
@@ -160,8 +185,9 @@ class TaskSet
   def wait(timeout=1)
     end_time = Time.now.to_f + timeout
     while not @tasks_in_progress.empty?
+      remaining = end_time - Time.now.to_f
       ready_socks = IO::select(
-        @sockets.values, nil, nil, end_time-Time.now.to_f)
+        @sockets.values, nil, nil, remaining > 0 ? remaining : 0)
       if not ready_socks or not ready_socks[0]
         Util.log "Timed out while waiting for tasks to finish"
         # not sure what state the connections are in, so just be lame and
@@ -172,10 +198,13 @@ class TaskSet
       end
       ready_socks[0].each do |sock|
         begin
-          read_packet(sock)
+          read_packet(sock, end_time - Time.now.to_f)
         rescue ProtocolError
           hostport = @client.get_hostport_for_socket(sock)
-          Util.err "Ignoring bad packet from #{hostport}"
+          Util.log "Ignoring bad packet from #{hostport}"
+        rescue NetworkError
+          hostport = @client.get_hostport_for_socket(sock)
+          Util.log "Got timeout on read from #{hostport}"
         end
       end
     end

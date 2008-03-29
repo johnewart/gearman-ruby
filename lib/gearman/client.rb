@@ -21,9 +21,10 @@ class Client
     @sockets = {}  # "host:port" -> [sock1, sock2, ...]
     @socket_to_hostport = {}  # sock -> "host:port"
     @test_hostport = nil  # make get_job_server return a given host for testing
+    @task_create_timeout_sec = 10
   end
   attr_reader :job_servers
-  attr_accessor :prefix, :test_hostport
+  attr_accessor :prefix, :test_hostport, :task_create_timeout_sec
 
   ##
   # Set the job servers to be used by this client.

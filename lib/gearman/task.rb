@@ -30,7 +30,16 @@ class Task
     @hash = nil
   end
   attr_accessor :uniq, :retry_count, :high_priority
-  attr_reader :successful
+  attr_reader :successful, :func, :arg
+
+  ##
+  # Internal method to reset this task's state so it can be run again.
+  # Called by TaskSet#add_task.
+  def reset_state
+    @retries_done = 0
+    @successful = false
+    self
+  end
 
   ##
   # Set a block of code to be executed when this task completes
@@ -82,7 +91,7 @@ class Task
     end
     @retries_done += 1
     @on_retry.call(@retries_done) if @on_retry
-    return true
+    true
   end
 
   ##
@@ -115,8 +124,6 @@ class Task
     func = (prefix ? prefix + "\t" : '') + @func
     Util::pack_request(mode, [func, get_uniq_hash, arg].join("\0"))
   end
-
-  attr_reader :func, :arg, :finished
 end
 
 end

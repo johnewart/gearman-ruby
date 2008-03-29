@@ -37,10 +37,10 @@ class FakeJobServer
     @tester.assert_equal(exp_data, data)
   end
 
-  def send_response(sock, type, data='')
+  def send_response(sock, type, data='', bogus_size=nil)
     type_num = Gearman::Util::NUMS[type.to_sym]
     raise RuntimeError, "Invalid type #{type}" if not type_num
-    response = "\0RES" + [type_num, data.size].pack('NN') + data
+    response = "\0RES" + [type_num, (bogus_size or data.size)].pack('NN') + data
     sock.write(response)
   end
 end
