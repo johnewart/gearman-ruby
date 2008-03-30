@@ -2,8 +2,8 @@
 
 $:.unshift('../lib')
 require 'gearman'
+require 'gearman/testlib'
 require 'test/unit'
-require './testlib'
 require 'thread'
 
 Thread.abort_on_exception = true

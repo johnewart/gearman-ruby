@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
 $:.unshift('../lib')
-require './testlib'
 require 'gearman'
+require 'gearman/testlib'
 require 'test/unit'
 require 'thread'
 

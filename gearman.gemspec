@@ -11,6 +11,6 @@ SPEC = Gem::Specification.new do |s|
   s.files         = candidates.delete_if {|i| i =~ /.svn/ }
   s.require_path  = "lib"
   s.autorequire   = "gearman"
-  s.test_files    = Dir.glob("test/{,mock_}{client,worker}.rb")
+  s.test_files    = Dir.glob("test/*.rb")
   s.has_rdoc      = true
 end
