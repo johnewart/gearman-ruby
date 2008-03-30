@@ -58,8 +58,6 @@
 #
 module Gearman
 
-DEFAULT_PORT = 7003
-
 require 'gearman/client'
 require 'gearman/task'
 require 'gearman/taskset'

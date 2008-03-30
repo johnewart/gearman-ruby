@@ -46,6 +46,9 @@ class Util
   # Map e.g. 'can_do' => 1
   NUMS = COMMANDS.invert
 
+  # Default job server port.
+  DEFAULT_PORT = 7003
+
   @@debug = false
 
   ##
