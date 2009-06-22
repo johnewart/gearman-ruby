@@ -61,7 +61,7 @@ class Server
     status = {}
     if response = send_command('status')
       response.split("\n").each do |line|
-        if line.match /^([a-z_]+)\t([a-z_]+)\t(\d+)\t(\d+)\t(\d+)$/
+        if line.match /^([A-Za-z_]+)\t([A-Za-z_]+)\t(\d+)\t(\d+)\t(\d+)$/
           (status[$1] ||= {})[$2] = { :queue => $3, :active => $4, :workers => $5 }
         end
       end
@@ -77,7 +77,7 @@ class Server
     workers = []
     if response = send_command('workers')
       response.split("\n").each do |line|
-        if line.match /^(\d+)\s([0-9\.]+)\s([A-Z\-])\s:\s([a-z_\s]+)$/
+        if line.match /^(\d+)\s([a-z0-9\:]+)\s([A-Z\-])\s:\s([a-z_\s\t]+)$/
           func_parts = $4.split(' ')
           functions = []
           while !func_parts.empty?
