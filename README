@@ -1,0 +1,9 @@
+gearman-ruby
+===============
+
+Library for the Gearman distributed job system
+
+COPYRIGHT
+=========
+
+Copyright (c) 2009 Ladislav Martincik. See LICENSE for details.
