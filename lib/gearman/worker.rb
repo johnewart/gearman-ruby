@@ -165,7 +165,7 @@ class Worker
         begin
           Util.log "Connecting to server #{server}"
           @sockets[server] = connect(server)
-        rescue NetworkError
+        rescue NetworkError, Errno::ECONNRESET
           @bad_servers << server
           Util.log "Unable to connect to #{server}"
         end
@@ -296,8 +296,8 @@ class Worker
         loop do
           begin
             type, data = Util.read_response(sock, @network_timeout_sec)
-          rescue NetworkError
-            Util.log "Server #{hostport} timed out; marking bad"
+          rescue NetworkError, Errno::ECONNRESET
+            Util.log "Server #{hostport} timed out or lost connection; marking bad"
             bad_servers << hostport
             break
           end
