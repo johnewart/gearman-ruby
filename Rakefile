@@ -9,7 +9,7 @@ begin
     s.name = "gearman-ruby"
     s.summary = "Library for the Gearman distributed job system"
     s.email = "ladislav.martincik@xing.com"
-    s.homepage = "http://github.com/lacomartincik/gearman-ruby"
+    s.homepage = "http://github.com/xing/gearman-ruby"
     s.description = "Library for the Gearman distributed job system"
     s.authors = ["Daniel Erat", "Ladislav Martincik"]
   end
