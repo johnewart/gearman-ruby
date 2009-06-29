@@ -296,7 +296,7 @@ class Worker
         loop do
           begin
             type, data = Util.read_response(sock, @network_timeout_sec)
-          rescue NetworkError, Errno::ECONNRESET
+          rescue IOError, NetworkError, Errno::ECONNRESET
             Util.log "Server #{hostport} timed out or lost connection; marking bad"
             bad_servers << hostport
             break
