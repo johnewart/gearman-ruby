@@ -40,7 +40,7 @@ class TaskSet
   #                     otherwise
   def add_task_internal(task, reset_state=true)
     task.reset_state if reset_state
-    req = task.get_submit_packet(@client.prefix)
+    req = task.get_submit_packet()
 
     @task_waiting_for_handle = task
     # FIXME: We need to loop here in case we get a bad job server, or the

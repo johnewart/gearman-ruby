@@ -13,11 +13,9 @@ class Client
   # Create a new client.
   #
   # @param job_servers  "host:port"; either a single server or an array
-  # @param prefix       function name prefix (namespace)
-  def initialize(job_servers=nil, prefix=nil)
+  def initialize(job_servers=nil)
     @job_servers = []  # "host:port"
     self.job_servers = job_servers if job_servers
-    @prefix = prefix
     @sockets = {}  # "host:port" -> [sock1, sock2, ...]
     @socket_to_hostport = {}  # sock -> "host:port"
     @test_hostport = nil  # make get_job_server return a given host for testing
@@ -25,8 +23,8 @@ class Client
     @server_counter = -1
     @bad_servers = []
   end
-  attr_reader :job_servers, :bad_servers
-  attr_accessor :prefix, :test_hostport, :task_create_timeout_sec
+  attr_reader :job_servers, :bad_servers  
+  attr_accessor :test_hostport, :task_create_timeout_sec  
 
   ##
   # Set the job servers to be used by this client.
@@ -135,6 +133,7 @@ class Client
 
     failed ? nil : result
   end
+
 end
 
 end

@@ -85,14 +85,12 @@ class Worker
   # Create a new worker.
   #
   # @param job_servers  "host:port"; either a single server or an array
-  # @param prefix       function name prefix (namespace)
   # @param opts         hash of additional options
-  def initialize(job_servers=nil, prefix=nil, opts={})
+  def initialize(job_servers=nil, opts={})
     chars = ('a'..'z').to_a
     @client_id = Array.new(30) { chars[rand(chars.size)] }.join
     @sockets = {}  # "host:port" -> Socket
     @abilities = {}  # "funcname" -> Ability
-    @prefix = prefix
     @bad_servers = []  # "host:port"
     @servers_mutex = Mutex.new
     %w{client_id reconnect_sec
@@ -223,7 +221,6 @@ class Worker
   # @param timeout  the server will give up on us if we don't finish
   #                 a task in this many seconds
   def add_ability(func, timeout=nil, &f)
-    func = (@prefix ? "#{@prefix}\t" : '') + func
     @abilities[func] = Ability.new(f, timeout)
     @sockets.values.each {|s| announce_ability(s, func, timeout) }
   end
