@@ -22,8 +22,10 @@ class Client
     @socket_to_hostport = {}  # sock -> "host:port"
     @test_hostport = nil  # make get_job_server return a given host for testing
     @task_create_timeout_sec = 10
+    @server_counter = -1
+    @bad_servers = []
   end
-  attr_reader :job_servers
+  attr_reader :job_servers, :bad_servers
   attr_accessor :prefix, :test_hostport, :task_create_timeout_sec
 
   ##
@@ -41,10 +43,18 @@ class Client
   #
   # @return  "host:port"
   def get_job_server
-    # Return a specific server if one's been set.
-    @test_hostport or @job_servers[rand(@job_servers.size)]
-  end
 
+    raise Exception.new('No servers available') if @job_servers.empty?
+
+    @server_counter += 1
+    # Return a specific server if one's been set.
+    @test_hostport or @job_servers[@server_counter % @job_servers.size]
+  end
+  
+  def signal_bad_server(hostport)
+    @job_servers = @job_servers.reject { |s| s == hostport }
+    @bad_servers << hostport
+  end
   ##
   # Get a socket for a job server.
   #
@@ -58,15 +68,18 @@ class Client
       return sock
     end
 
-    num_retries.times do
+    num_retries.times do |i|
       begin
         sock = TCPSocket.new(*hostport.split(':'))
       rescue Exception
       else
+
         @socket_to_hostport[sock] = hostport
         return sock
       end
     end
+
+    signal_bad_server(hostport)
     raise RuntimeError, "Unable to connect to job server #{hostport}"
   end
 

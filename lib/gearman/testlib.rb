@@ -4,12 +4,17 @@ require 'socket'
 require 'thread'
 
 class FakeJobServer
-  def initialize(tester)
+  def initialize(tester,port=nil)
     @tester = tester
-    @serv = TCPserver.open(0)
+    @serv = TCPserver.open(0) if port.nil?
+    @serv = TCPserver.open('localhost',port) unless port.nil?
     @port = @serv.addr[1]
   end
   attr_reader :port
+
+  def server_socket
+    @serv
+  end
 
   def stop
     @serv.close
@@ -35,6 +40,15 @@ class FakeJobServer
     @tester.assert_equal(Gearman::Util::NUMS[exp_type.to_sym], type)
     data = len > 0 ? sock.recv(len) : ''
     @tester.assert_equal(exp_data, data)
+  end
+
+  def expect_any_request(sock)
+    head = sock.recv(12)
+  end
+
+  def expect_anything_and_close_socket(sock)
+    head = sock.recv(12)
+    sock.close
   end
 
   def send_response(sock, type, data='', bogus_size=nil)

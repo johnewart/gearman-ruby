@@ -5,6 +5,8 @@ require 'time'
 
 module Gearman
 
+  class ServerDownException < Exception; end
+
 # = Util
 #
 # == Description
@@ -117,6 +119,7 @@ class Util
   # @param timeout  timeout in seconds, nil for no timeout
   # @return         array consisting of integer packet type and data
   def Util.read_response(sock, timeout=nil)
+    #debugger
     end_time = Time.now.to_f + timeout if timeout
     head = timed_recv(sock, 12, timeout)
     magic, type, len = head.unpack('a4NN')
@@ -134,7 +137,7 @@ class Util
   # @param sock  Socket connected to a job server
   # @param req   request packet to send
   def Util.send_request(sock, req)
-    len = sock.write(req)
+    len = with_safe_socket_op{ sock.write(req) }
     if len != req.size
       raise NetworkError, "Wrote #{len} instead of #{req.size}"
     end
@@ -186,6 +189,14 @@ class Util
   # @param str  message to log
   def Util.err(str)
     log(str, true)
+  end
+
+  def self.with_safe_socket_op
+    begin
+      yield
+    rescue Exception => ex
+      raise ServerDownException.new(ex.message)
+    end
   end
 end
 

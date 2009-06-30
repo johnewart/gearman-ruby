@@ -45,10 +45,27 @@ class TaskSet
     @task_waiting_for_handle = task
     # FIXME: We need to loop here in case we get a bad job server, or the
     # job creation fails (see how the server reports this to us), or ...
+
     merge_hash = task.get_uniq_hash
-    hostport = (@merge_hash_to_hostport[merge_hash] or @client.get_job_server)
-    @merge_hash_to_hostport[merge_hash] = hostport if merge_hash
-    sock = (@sockets[hostport] or @client.get_socket(hostport))
+
+    looking_for_socket = true
+
+    should_try_rehash = true
+    while(looking_for_socket)
+      begin
+        hostport = if should_try_rehash
+          (@merge_hash_to_hostport[merge_hash] or @client.get_job_server)
+        else
+          @client.get_job_server
+        end
+
+        @merge_hash_to_hostport[merge_hash] = hostport if merge_hash
+        sock = (@sockets[hostport] or @client.get_socket(hostport))
+        looking_for_socket = false
+      rescue RuntimeError
+        should_try_rehash = false
+      end
+    end
     Util.log "Using socket #{sock.inspect} for #{hostport}"
     Util.send_request(sock, req)
     while @task_waiting_for_handle
@@ -107,6 +124,7 @@ class TaskSet
     end
     nil
   end
+
   private :handle_work_complete
 
   ##

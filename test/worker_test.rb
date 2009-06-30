@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+require 'rubygems'
+require 'mocha'
 
 $:.unshift('../lib')
 require 'gearman'
@@ -29,5 +31,31 @@ class TestClient < Test::Unit::TestCase
     end.run
     sock = server.expect_connection
     server.expect_request(sock, :work_status, "handle\00010\00020")
+  end
+
+
+  def test_job_reconnection
+    server = FakeJobServer.new(self)
+    Thread.new do
+      sock = server.expect_connection
+      server.expect_anything_and_close_socket(sock)
+    end
+
+    servers = ["localhost:#{server.port}"]
+    w = Gearman::Worker.new(servers)
+    Gearman::Util.stubs(:send_request).raises(Exception.new)
+    w.add_ability('sleep') do |data,job|
+      seconds = data
+      (1..seconds.to_i).each do |i|
+        sleep 1
+        print i
+        # Report our progress to the job server every second.
+        job.report_status(i, seconds)
+      end
+      # Report success.
+      true
+    end
+
+    assert(w.bad_servers.size == 1)
   end
 end

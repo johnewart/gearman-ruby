@@ -57,12 +57,18 @@
 #  puts c.do_task('add', '2 + 2')
 #
 module Gearman
-
+=begin
 require 'gearman/client'
 require 'gearman/task'
 require 'gearman/taskset'
 require 'gearman/util'
 require 'gearman/worker'
+=end
+require File.dirname(__FILE__) + '/gearman/client'
+require File.dirname(__FILE__) + '/gearman/task'
+require File.dirname(__FILE__) + '/gearman/taskset'
+require File.dirname(__FILE__) + '/gearman/util'
+require File.dirname(__FILE__) + '/gearman/worker'
 
 class InvalidArgsError < Exception
 end

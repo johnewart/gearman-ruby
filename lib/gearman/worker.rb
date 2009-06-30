@@ -109,7 +109,7 @@ class Worker
     self.job_servers = job_servers if job_servers
     start_reconnect_thread
   end
-  attr_accessor :client_id, :reconnect_sec, :network_timeout_sec
+  attr_accessor :client_id, :reconnect_sec, :network_timeout_sec, :bad_servers
 
   # Start a thread to repeatedly attempt to connect to down job servers.
   def start_reconnect_thread
@@ -200,9 +200,13 @@ class Worker
   # @param timeout  the server will give up on us if we don't finish
   #                 a task in this many seconds
   def announce_ability(sock, func, timeout=nil)
-    cmd = timeout ? :can_do_timeout : :can_do
-    arg = timeout ? "#{func}\0#{timeout.to_s}" : func
-    Util.send_request(sock, Util.pack_request(cmd, arg))
+    begin
+      cmd = timeout ? :can_do_timeout : :can_do
+      arg = timeout ? "#{func}\0#{timeout.to_s}" : func
+      Util.send_request(sock, Util.pack_request(cmd, arg))
+    rescue Exception => ex
+      bad_servers << @sockets.keys.detect{|hp| @sockets[hp] == sock}
+    end
   end
   private :announce_ability
 
@@ -296,20 +300,20 @@ class Worker
         loop do
           begin
             type, data = Util.read_response(sock, @network_timeout_sec)
-          rescue IOError, NetworkError, Errno::ECONNRESET
+            case type
+            when :no_job
+              Util.log "Got no_job from #{hostport}"
+              break
+            when :job_assign
+              return if handle_job_assign(data, sock, hostport)
+              break
+            else
+              Util.log "Got #{type.to_s} from #{hostport}"
+            end
+          rescue Gearman::ServerDownException, NetworkError, Errno::ECONNRESET
             Util.log "Server #{hostport} timed out or lost connection; marking bad"
             bad_servers << hostport
             break
-          end
-          case type
-          when :no_job
-            Util.log "Got no_job from #{hostport}"
-            break
-          when :job_assign
-            return if handle_job_assign(data, sock, hostport)
-            break
-          else
-            Util.log "Got #{type.to_s} from #{hostport}"
           end
         end
       end
