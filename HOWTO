@@ -1,0 +1,77 @@
+= GEARMAN
+
+"Gearman provides a generic application framework to farm out work to other 
+machines or processes that are better suited to do the work. It allows you to 
+do work in parallel, to load balance processing, and to call functions between 
+languages. It can be used in a variety of applications, from high-availability 
+web sites to the transport of database replication events. In other words, it 
+is the nervous system for how distributed processing communicates."
+
+ - http://www.gearman.org/
+
+
+== Setting up a basic environment
+
+A very basic German environment will look like this:
+
+                       ----------  
+                       | Client |  
+                       ----------  
+                           |
+                     --------------     
+                     | Job Server |     
+                     --------------     
+                           |
+    ----------------------------------------------
+    |              |              |              |
+----------     ----------     ----------     ----------
+| Worker |     | Worker |     | Worker |     | Worker |
+----------     ----------     ----------     ----------
+
+And the behavior will be the following:
+
+ * JobServer: Acts as a message passing point.
+ * Client: Sends tasks to the JobServer. Will be connected to only one JobServer
+           in case more than one exits for failover purposes.
+ * Worker: Anounce his 'abilities' to the JobServer and waits for tasks.
+
+For the JobServer we recommend to use the offical Perl version, there's also a
+more performant C implementation of the server with support for persistent
+queues, bells and whistles but is not stable enough for production use at the 
+time of this document was wrote.
+
+The Client and the Worker can be implemented in any language. This way you can
+send tasks from a Ruby client server, to a Perl or C worker in order to get 
+better performance.
+
+== Installing the required software
+
+For the JobServer we recommend to use the offical Perl version, to install it:
+
+ * Mac OS X: sudo port install p5-gearman-server
+ * Debian/Ubuntu: sudo apt-get install gearman-server
+
+To get the Ruby libraries by Xing:
+
+ git clone git://github.com/xing/gearman-ruby.git
+
+== Gearman demo
+
+Now you're ready for you first experience with Gearman. In the cloned repository
+you'll find an 'examples' directory.
+
+Run the 'gearman_environment.sh' to build an environment like the one showed in
+the diagram above.
+
+  * Client: Will ask you for an arithmetic operation, like: 2+3
+            The code of the client is in: 'examples/calculus_client.rb'
+
+  * JobServer: The Perl server.
+
+  * Workers: You'll have 4 worker, one for each of the basic arithmetic 
+             operations.
+             The code of the worker is in: 'examples/calculus_worker.rb'
+
+
+Enjoy.
+
