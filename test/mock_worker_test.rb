@@ -33,7 +33,7 @@ class TestWorker < Test::Unit::TestCase
     # Create a worker and wait for it to connect to us.
     w.exec {
       worker = Gearman::Worker.new(
-        "localhost:#{@server.port}", nil, { :client_id => 'test' })
+        "localhost:#{@server.port}", { :client_id => 'test' })
     }
     s.exec { sock = @server.expect_connection }
     s.wait
@@ -90,7 +90,7 @@ class TestWorker < Test::Unit::TestCase
     # Create a worker, which should connect to both servers.
     w.exec {
       worker = Gearman::Worker.new(
-        nil, nil, { :client_id => 'test', :reconnect_sec => 0.1 }) }
+        nil, { :client_id => 'test', :reconnect_sec => 0.1 }) }
     w.exec { worker.add_ability('foo') {|d,j| 'bar' } }
     w.exec {
       worker.job_servers =
@@ -180,7 +180,7 @@ class TestWorker < Test::Unit::TestCase
     worker_thread = Thread.new { w.loop_forever }.run
 
     w.exec {
-      worker = Gearman::Worker.new("localhost:#{@server.port}", nil,
+      worker = Gearman::Worker.new("localhost:#{@server.port}",
         { :client_id => 'test',
           :reconnect_sec => 0.15,
           :network_timeout_sec => 0.1 })

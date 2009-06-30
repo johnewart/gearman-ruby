@@ -150,7 +150,7 @@ class TestClient < Test::Unit::TestCase
     server_thread = Thread.new { s.loop_forever }.run
     client_thread = Thread.new { c.loop_forever }.run
 
-    c.exec { client = Gearman::Client.new("localhost:#{server.port}", 'pre') }
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
 
     c.exec { task1 = Gearman::Task.new('func1', 'a') }
     c.exec { task1.on_complete {|d| res1 = d } }
@@ -160,7 +160,7 @@ class TestClient < Test::Unit::TestCase
     s.exec { sock = server.expect_connection }
     s.wait
 
-    s.exec { server.expect_request(sock, :submit_job, "pre\tfunc1\000\000a") }
+    s.exec { server.expect_request(sock, :submit_job, "func1\000\000a") }
     s.exec { server.send_response(sock, :job_created, 'a') }
 
     c.exec { task2 = Gearman::Task.new('func2', 'b') }
@@ -168,7 +168,7 @@ class TestClient < Test::Unit::TestCase
     c.exec { task2.on_fail { fail2 = true } }
     c.exec { taskset.add_task(task2) }
 
-    s.exec { server.expect_request(sock, :submit_job, "pre\tfunc2\000\000b") }
+    s.exec { server.expect_request(sock, :submit_job, "func2\000\000b") }
     s.exec { server.send_response(sock, :job_created, 'b') }
 
     s.exec { server.send_response(sock, :work_complete, "a\000a1") }
