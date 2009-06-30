@@ -198,6 +198,15 @@ class Util
       raise ServerDownException.new(ex.message)
     end
   end
+  
+  def Util.ability_name_with_prefix(prefix,name)
+    "#{prefix}\t#{name}"
+  end
+  
+  class << self
+    alias :ability_name_for_perl :ability_name_with_prefix
+  end
+  
 end
 
 end
