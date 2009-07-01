@@ -138,7 +138,7 @@ class TaskSet
     handle, exception = data.split("\0", 3)
     Util.log "Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
     js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress[js_handle]
+    tasks = @tasks_in_progress.delete(js_handle)
     if not tasks
       raise ProtocolError, "Got unexpected work_status with handle " +
         "#{handle} from #{hostport} (no task by that name)"
