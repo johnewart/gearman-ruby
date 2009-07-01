@@ -124,8 +124,31 @@ class TaskSet
     end
     nil
   end
-
   private :handle_work_complete
+
+  ##
+  # Handle a 'work_exception' response from a job server.
+  #
+  # @param hostport  "host:port" of job server
+  # @param data      data returned in packet from server
+  def handle_work_exception(hostport, data)
+    handle, exception = data.split("\0", 3)
+    Util.log "Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
+    js_handle = Util.handle_to_str(hostport, handle)
+    tasks = @tasks_in_progress[js_handle]
+    if not tasks
+      raise ProtocolError, "Got unexpected work_status with handle " +
+        "#{handle} from #{hostport} (no task by that name)"
+    end
+    tasks.each do |t|
+      if t.handle_exception(exception)
+        add_task_internal(t, false)
+      else
+        @finished_tasks << t
+      end
+    end
+  end
+  private :handle_work_exception
 
   ##
   # Handle a 'work_fail' response from a job server.
@@ -189,6 +212,8 @@ class TaskSet
       handle_work_fail(hostport, data)
     when :work_status
       handle_work_status(hostport, data)
+    when :work_exception
+      handle_work_exception(hostport, data)
     else
       Util.log "Got #{type.to_s} from #{hostport}"
     end

@@ -185,6 +185,39 @@ class TestClient < Test::Unit::TestCase
     assert_equal(false, setres)
   end
 
+  def test_exception
+    server = FakeJobServer.new(self)
+    client, task, taskset, sock = nil
+    res,exception, setres = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task = Gearman::Task.new('func2', 'b') }
+    c.exec { task.on_complete {|d| res = d } }
+    c.exec { task.on_exception {|message| exception=message; false } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task) }
+    s.exec { sock = server.expect_connection }
+
+    s.exec { server.expect_request(sock, :submit_job, "func2\000\000b") }
+    s.exec { server.send_response(sock, :job_created, 'b') }
+
+    s.exec { server.send_response(sock, :work_exception, "b\0exceptionmsg") }
+
+    c.exec { setres = taskset.wait }
+    c.wait
+    s.wait
+
+    assert_equal(nil, res)
+    assert_equal('exceptionmsg',exception)
+  end
+
   ##
   # Test that user-supplied uniq values are handled correctly.
   def test_uniq

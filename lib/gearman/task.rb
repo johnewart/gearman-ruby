@@ -16,7 +16,7 @@ class Task
   def initialize(func, arg='', opts={})
     @func = func.to_s
     @arg = arg or ''  # TODO: use something more ref-like?
-    %w{uniq on_complete on_fail on_retry on_status retry_count
+    %w{uniq on_complete on_fail on_retry on_exception on_status retry_count
        high_priority}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
@@ -63,6 +63,14 @@ class Task
   end
 
   ##
+  # Set a block of code to be executed when a remote exception is sent by a worker.
+  # The block will receive the message of the exception passed from the worker.
+  # The user can return true for retrying or false to mark it as finished
+  def on_exception(&f)
+    @on_exception = f
+  end
+
+  ##
   # Set a block of code to be executed when we receive a status update for
   # this task.  The block will receive two arguments, a numerator and
   # denominator describing the task's status.
@@ -92,6 +100,20 @@ class Task
     @retries_done += 1
     @on_retry.call(@retries_done) if @on_retry
     true
+  end
+
+  ##
+  # Record an exception and check whether we should be retried.
+  #
+  # @return  true if we should be resubmitted; false otherwise
+  def handle_exception(exception)
+    if @on_exception
+      should_retry = @on_exception.call(exception)
+      @retries_done += 1 if should_retry
+      should_retry
+    else
+      false
+    end
   end
 
   ##
