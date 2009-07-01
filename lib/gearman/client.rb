@@ -23,8 +23,8 @@ class Client
     @server_counter = -1
     @bad_servers = []
   end
-  attr_reader :job_servers, :bad_servers  
-  attr_accessor :test_hostport, :task_create_timeout_sec  
+  attr_reader :job_servers, :bad_servers
+  attr_accessor :test_hostport, :task_create_timeout_sec
 
   ##
   # Set the options
