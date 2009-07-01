@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require 'rubygems'
-require 'gearman'
+require '../lib/gearman'
 #Gearman::Util.debug = true
 
 # Connect to the local server (at the default port 7003) 
