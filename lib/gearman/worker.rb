@@ -259,17 +259,25 @@ class Worker
       return false
     end
 
-    ret = ability.run(data, Job.new(sock, handle))
+    exception = nil
+    begin
+      ret = ability.run(data, Job.new(sock, handle))
+    rescue Exception => e
+      exception = e
+    end
 
-    cmd = nil
-    if ret
+
+    cmd = if ret && exception.nil?
       ret = ret.to_s
       Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s) " +
         "to #{hostport}"
-      cmd = Util.pack_request(:work_complete, "#{handle}\0#{ret}")
-    else
+      Util.pack_request(:work_complete, "#{handle}\0#{ret}")
+    elsif exception.nil?
       Util.log "Sending work_fail for #{handle} to #{hostport}"
-      cmd = Util.pack_request(:work_fail, handle)
+      Util.pack_request(:work_fail, handle)
+    elsif exception
+      Util.log "Sending work_exception for #{handle} to #{hostport}"
+      Util.pack_request(:work_exception, "#{handle}\0#{exception.message}")
     end
 
     Util.send_request(sock, cmd)

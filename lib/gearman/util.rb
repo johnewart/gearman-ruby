@@ -39,6 +39,7 @@ class Util
     15 => :get_status,      # C->J: HANDLE
     20 => :status_res,      # C->J: HANDLE[0]KNOWN[0]RUNNING[0]NUM[0]DENOM
 
+    25 => :work_exception,  # W->J: HANDLE[0]ARG
     16 => :echo_req,        # ?->J: TEXT
     17 => :echo_res,        # J->?: TEXT
 
