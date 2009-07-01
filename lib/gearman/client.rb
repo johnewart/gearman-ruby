@@ -27,6 +27,19 @@ class Client
   attr_accessor :test_hostport, :task_create_timeout_sec  
 
   ##
+  # Set the options
+  #
+  # @options options to pass to the servers  "exeptions"
+  def option_request(opts)
+    Util.log "Send options request with #{opts}"
+    request = Util.pack_request("option_req", opts)
+    sock= self.get_socket(self.get_job_server)
+    Util.send_request(sock, request)
+    response = Util.read_response(sock, 20)
+    raise ProtocolError, response[1] if response[0]==:error
+  end
+
+  ##
   # Set the job servers to be used by this client.
   #
   # @param servers  "host:port"; either a single server or an array

@@ -108,4 +108,25 @@ class TestClient < Test::Unit::TestCase
     end
     assert(should_be_true)
   end
+
+  def test_option_request_exceptions
+    client = Gearman::Client.new
+    hostport = "localhost:9999"
+    client.job_servers = [hostport]
+    client.option_request("exceptions")
+  end
+
+  def test_option_request_bad
+    client = Gearman::Client.new
+    hostport = "localhost:9999"
+    client.job_servers = [hostport]
+    begin
+      client.option_request("cccceptionsccc")
+      assert(false)
+    rescue Gearman::ProtocolError
+      assert(true)
+    end
+  end
+
+
 end

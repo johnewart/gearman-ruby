@@ -36,6 +36,10 @@ class Util
     13 => :work_complete,   # W->J/C: HANDLE[0]RES
     14 => :work_fail,       # W->J/C: HANDLE
 
+    25 => :work_exception,  # W->J: HANDLE[0]ARG
+    26 => :option_req,      # C->J: TEXT
+    27 => :option_res,      # J->C: TEXT
+
     15 => :get_status,      # C->J: HANDLE
     20 => :status_res,      # C->J: HANDLE[0]KNOWN[0]RUNNING[0]NUM[0]DENOM
 
@@ -199,15 +203,15 @@ class Util
       raise ServerDownException.new(ex.message)
     end
   end
-  
+
   def Util.ability_name_with_prefix(prefix,name)
     "#{prefix}\t#{name}"
   end
-  
+
   class << self
     alias :ability_name_for_perl :ability_name_with_prefix
   end
-  
+
 end
 
 end
