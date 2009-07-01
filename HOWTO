@@ -72,6 +72,75 @@ the diagram above.
              operations.
              The code of the worker is in: 'examples/calculus_worker.rb'
 
+There are other demos in the examples folder you can give a look at. Each demo usually
+consist in the client and server scripts.
+
+=== Creating clients and tasks
+
+In order to get a job scheduled by a Gearman server using the gearman ruby library, there
+are three main objects you must interact with: Gearman::Client, Gearman::Task and Gearman::TaskSet.
+Let's review all of them briefly:
+
+  - Gearman::Client -> the portion of the library storing the data about the connection to 
+                       the Gearman server.
+  - Gearman::Task -> a job execution request that will be dispatched by the Gearman server to 
+                     worker and whose result data will be returned to the client.
+  - Gearman::TaskSet -> a collection of tasks to be executed. The Taskset object will track the
+                        execution of the tasks with the info returned from the Gearman server
+                        and notify the client with the results or errors when all the tasks
+                        have completed their execution.
+
+To send a new task to the Gearman server, the client must build a new Gearman::Task object, add it to
+a Gearman::TaskSet that must hold a reference to a Gearman::Client and send the wait message to
+the TaskSet.
+The following code taken from examples/client.rb shows the process:
+
+----------------------------------------------------
+servers = ['localhost:4730', 'localhost:4731']
+  
+client = Gearman::Client.new(servers)
+taskset = Gearman::TaskSet.new(client)
+
+task = Gearman::Task.new('sleep', 20)
+task.on_complete {|d| puts d }
+
+taskset.add_task(task)
+taskset.wait(100)
+----------------------------------------------------
+
+The name of the function to be executed is the first parameter to the constructor of the Task object.
+Take into account that the string you pass as a parameter will be used 'as it' by the Gearman server
+to locate a suitable worker for that function.
+The second parameter is the argument to be sent to the worker that will execute, if the arguments for
+the task are complex, a serialization format like YAML or XML must be agreeded with the workers.
+The last and optional parameter is a hash of options. The following options are currently available:
+
+  - :priority -> (:high | :low) the priority of the job, a high priority job is executed before a low on
+  - :background -> (true | false) a background task will return no further information to the client.
+
+The execution of a task in a Gearman remote worker can fail, the worker can throw an exception, etc.
+All these events can be handled by the client of the ruby library registering callback blocks.
+The following events are currently available:
+
+  - on_complete -> the task was executed succesfully
+  - on_fail -> the task fail for some unknown reason
+  - on_retry -> after failure, the task is gonna be retried, the number of retries is passed
+  - on_exception -> the remote worker send an exception notification, the exception text is passed
+  - on_stauts -> a status update is sent by the remote worker
+
+In order to receive exception notifications in the client, this option must be sent in the server, the 
+method option_request can be used this task. The following example, extracted from the examples/client_exception.rb 
+demo script shows the process:
+
+----------------------------------------------------
+client = Gearman::Client.new(servers)
+#try this out
+client.option_request("exceptions")
+----------------------------------------------------
+
+This feature will only works if the server and workers have implemented support for the OPT_REQ and WORK_EXCEPTION
+messages of the Gearman protocol.
+
 
 Enjoy.
 
