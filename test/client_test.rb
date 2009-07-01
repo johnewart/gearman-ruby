@@ -110,15 +110,28 @@ class TestClient < Test::Unit::TestCase
   end
 
   def test_option_request_exceptions
+    this_server = FakeJobServer.new(self)
+    Thread.new do
+      server_socket = this_server.expect_connection
+      this_server.expect_request(server_socket, "option_req", "exceptions")
+      this_server.send_response(server_socket, :job_created, 'a')
+    end
     client = Gearman::Client.new
-    hostport = "localhost:9999"
+    hostport = "localhost:#{this_server.port}"
     client.job_servers = [hostport]
     client.option_request("exceptions")
   end
 
   def test_option_request_bad
+    this_server = FakeJobServer.new(self)
+    Thread.new do
+      server_socket = this_server.expect_connection
+      this_server.expect_request(server_socket, "option_req", "cccceptionsccc")
+      this_server.send_response(server_socket, :exception, 'a')
+    end
+
     client = Gearman::Client.new
-    hostport = "localhost:9999"
+    hostport = "localhost:#{this_server.port}"
     client.job_servers = [hostport]
     begin
       client.option_request("cccceptionsccc")

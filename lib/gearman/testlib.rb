@@ -33,10 +33,10 @@ class FakeJobServer
     @tester.assert_true(sock.closed?)
   end
 
-  def expect_request(sock, exp_type, exp_data='')
-    head = sock.recv(12)
+  def expect_request(sock, exp_type, exp_data='', size=12)
+    head = sock.recv(size)
     magic, type, len = head.unpack('a4NN')
-    @tester.assert_equal("\0REQ", magic)
+    @tester.assert("\0REQ" == magic || "\000REQ" == magic)
     @tester.assert_equal(Gearman::Util::NUMS[exp_type.to_sym], type)
     data = len > 0 ? sock.recv(len) : ''
     @tester.assert_equal(exp_data, data)
@@ -52,8 +52,7 @@ class FakeJobServer
   end
 
   def send_response(sock, type, data='', bogus_size=nil)
-    type_num = Gearman::Util::NUMS[type.to_sym]
-    raise RuntimeError, "Invalid type #{type}" if not type_num
+    type_num = Gearman::Util::NUMS[type.to_sym] || 0
     response = "\0RES" + [type_num, (bogus_size or data.size)].pack('NN') + data
     sock.write(response)
   end
