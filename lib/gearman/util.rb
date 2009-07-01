@@ -24,8 +24,11 @@ class Util
 
     6  => :noop,            # J->W: --
     7  => :submit_job,      # C->J: FUNC[0]UNIQ[0]ARGS
-    21 => :submit_job_high, # C->J: FUNC[0]UNIQ[0]ARGS
-    18 => :submit_job_bg,   # C->J: FUNC[0]UNIQ[0]ARGS
+    33 => :submit_job_low,     # C->J: FUNC[0]UNIQ[0]ARGS
+    34 => :submit_job_low_bg,  # C->J: FUNC[0]UNIQ[0]ARGS
+    21 => :submit_job_high,    # C->J: FUNC[0]UNIQ[0]ARGS
+    32 => :submit_job_high_bg, # C->J: FUNC[0]UNIQ[0]ARGS
+    18 => :submit_job_bg,      # C->J: FUNC[0]UNIQ[0]ARGS
 
     8  => :job_created,     # J->C: HANDLE
     9  => :grab_job,        # W->J: --

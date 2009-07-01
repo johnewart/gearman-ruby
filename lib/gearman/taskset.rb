@@ -92,13 +92,16 @@ class TaskSet
   def handle_job_created(hostport, data)
     Util.log "Got job_created with handle #{data} from #{hostport}"
     if not @task_waiting_for_handle
-      raise ProtocolError, "Got unexpected job_created notification " +
-        "with handle #{data} from #{hostport}"
+      raise ProtocolError, "Got unexpected job_created notification " + "with handle #{data} from #{hostport}"
     end
     js_handle = Util.handle_to_str(hostport, data)
     task = @task_waiting_for_handle
     @task_waiting_for_handle = nil
-    (@tasks_in_progress[js_handle] ||= []) << task
+    if(task.background)
+      @finished_tasks << task
+    else
+      (@tasks_in_progress[js_handle] ||= []) << task
+    end
     nil
   end
   private :handle_job_created
@@ -254,7 +257,7 @@ class TaskSet
     @sockets.values.each {|s| @client.return_socket(s) }
     @sockets = {}
     @finished_tasks.each do |t|
-      if not t.successful
+      if ( (t.background.nil? || t.background == false) && !t.successful)
         Util.log "Taskset failed"
         return false
       end

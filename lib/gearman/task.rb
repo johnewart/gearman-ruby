@@ -7,6 +7,7 @@ module Gearman
 # == Description
 # A task submitted to a Gearman job server.
 class Task
+
   ##
   # Create a new Task object.
   #
@@ -17,7 +18,7 @@ class Task
     @func = func.to_s
     @arg = arg or ''  # TODO: use something more ref-like?
     %w{uniq on_complete on_fail on_retry on_exception on_status retry_count
-       high_priority}.map {|s| s.to_sym }.each do |k|
+       priority background}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
     end
@@ -29,7 +30,7 @@ class Task
     @retries_done = 0
     @hash = nil
   end
-  attr_accessor :uniq, :retry_count, :high_priority
+  attr_accessor :uniq, :retry_count, :priority, :background
   attr_reader :successful, :func, :arg
 
   ##
@@ -138,11 +139,21 @@ class Task
   ##
   # Construct a packet to submit this task to a job server.
   #
-  # @param background  ??
   # @return            String representation of packet
-  def get_submit_packet(background=false)
-    mode = 'submit_job' +
-      (background ? '_bg' : @high_priority ? '_high' : '')
+  def get_submit_packet()
+    mode = 'submit_job'
+    if(@priority)
+      if(@priority == :high)
+        mode += "_high"
+      elsif(@priority == :low)
+        mode += "_low"
+      end
+    end
+
+    if(@background)
+      mode += "_bg"
+    end
+
     Util::pack_request(mode, [func, get_uniq_hash, arg].join("\0"))
   end
 end

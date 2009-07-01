@@ -57,6 +57,127 @@ class TestClient < Test::Unit::TestCase
   end
 
   ##
+  # Tests that the high priority option can be set in a job request
+  def test_client_submit_priority_high
+    server = FakeJobServer.new(self)
+    client, task1, task2, taskset, sock, res1, res2 = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task1 = Gearman::Task.new('add', '5 2', { :priority => :high }) }
+    c.exec { task1.on_complete {|d| res1 = d.to_i } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task1) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job_high, "add\000\0005 2") }
+  end
+
+  ##
+  # Tests that the low priority option can be set in a job request
+  def test_client_submit_priority_low
+    server = FakeJobServer.new(self)
+    client, task1, task2, taskset, sock, res1, res2 = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task1 = Gearman::Task.new('add', '5 2', { :priority => :low }) }
+    c.exec { task1.on_complete {|d| res1 = d.to_i } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task1) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job_low, "add\000\0005 2") }
+  end
+
+
+  ##
+  # Check that the client sends a correct background job request
+  def test_client_submit_background
+    server = FakeJobServer.new(self)
+    client, task1, task2, taskset, sock, res1, res2 = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task1 = Gearman::Task.new('add', '5 2', { :background => :true }) }
+    c.exec { task1.on_complete {|d| res1 = d.to_i } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task1) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job_bg, "add\000\0005 2") }
+  end
+
+  ##
+  # Check that the client sends a correct background job with high priority request
+  def test_client_submit_background
+    server = FakeJobServer.new(self)
+    client, task1, task2, taskset, sock, res1, res2 = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task1 = Gearman::Task.new('add', '5 2', { :background => :true, :priority => :high }) }
+    c.exec { task1.on_complete {|d| res1 = d.to_i } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task1) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job_high_bg, "add\000\0005 2") }
+  end
+
+  ##
+  # Check that the client sends a correct background job with low priority request
+  def test_client_submit_background
+    server = FakeJobServer.new(self)
+    client, task1, task2, taskset, sock, res1, res2 = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+
+    c.exec { task1 = Gearman::Task.new('add', '5 2', { :background => :true, :priority => :low }) }
+    c.exec { task1.on_complete {|d| res1 = d.to_i } }
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task1) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    s.exec { server.expect_request(sock, :submit_job_low_bg, "add\000\0005 2") }
+  end
+  
+  ##
   # Test Client#do_task.
   def test_do_task
     server = FakeJobServer.new(self)
