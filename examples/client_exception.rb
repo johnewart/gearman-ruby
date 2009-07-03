@@ -1,9 +1,8 @@
 require 'rubygems'
-#require 'gearman'
 require '../lib/gearman'
 Gearman::Util.debug = true
 
-servers = ['localhost:4730','localhost:4731']
+servers = ['localhost:4730']
 
 client = Gearman::Client.new(servers)
 #try this out

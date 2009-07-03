@@ -1,10 +1,9 @@
 require 'rubygems'
-#require 'gearman'
 require '../lib/gearman'
 
 Gearman::Util.debug = true
 
-servers = ['localhost:4730','localhost:4731']
+servers = ['localhost:4730']
 w = Gearman::Worker.new(servers)
 
 # Add a handler for a "sleep" function that takes a single argument, the
