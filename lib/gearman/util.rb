@@ -38,6 +38,7 @@ class Util
     12 => :work_status,     # W->J/C: HANDLE[0]NUMERATOR[0]DENOMINATOR
     13 => :work_complete,   # W->J/C: HANDLE[0]RES
     14 => :work_fail,       # W->J/C: HANDLE
+    29 => :work_warning,    # W->J/C: HANDLE[0]MSG
 
     25 => :work_exception,  # W->J: HANDLE[0]ARG
     26 => :option_req,      # C->J: TEXT

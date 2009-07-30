@@ -271,16 +271,17 @@ class Worker
       ret = ret.to_s
       Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s) " +
         "to #{hostport}"
-      Util.pack_request(:work_complete, "#{handle}\0#{ret}")
+      [ Util.pack_request(:work_complete, "#{handle}\0#{ret}") ]
     elsif exception.nil?
       Util.log "Sending work_fail for #{handle} to #{hostport}"
-      Util.pack_request(:work_fail, handle)
+      [ Util.pack_request(:work_fail, handle) ]
     elsif exception
-      Util.log "Sending work_exception for #{handle} to #{hostport}"
-      Util.pack_request(:work_exception, "#{handle}\0#{exception.message}")
+      Util.log "Sending work_warning, work_fail for #{handle} to #{hostport}"
+      [ Util.pack_request(:work_warning, "#{handle}\0#{exception.message}"),
+        Util.pack_request(:work_fail, handle) ]
     end
 
-    Util.send_request(sock, cmd)
+    cmd.each {|p| Util.send_request(sock, p) }
     true
   end
 

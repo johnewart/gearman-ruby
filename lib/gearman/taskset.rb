@@ -135,21 +135,15 @@ class TaskSet
   # @param hostport  "host:port" of job server
   # @param data      data returned in packet from server
   def handle_work_exception(hostport, data)
-    handle, exception = data.split("\0", 3)
+    handle, exception = data.split("\0", 2)
     Util.log "Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
     js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress.delete(js_handle)
+    tasks = @tasks_in_progress[js_handle]
     if not tasks
-      raise ProtocolError, "Got unexpected work_status with handle " +
+      raise ProtocolError, "Got unexpected work_exception with handle " +
         "#{handle} from #{hostport} (no task by that name)"
     end
-    tasks.each do |t|
-      if t.handle_exception(exception)
-        add_task_internal(t, false)
-      else
-        @finished_tasks << t
-      end
-    end
+    tasks.each {|t| t.handle_exception(exception) }
   end
   private :handle_work_exception
 
@@ -196,6 +190,24 @@ class TaskSet
   private :handle_work_status
 
   ##
+  # Handle a 'work_warning' response from a job server.
+  #
+  # @param hostport "host:port" of job server
+  # @param data     data returned in packet from server
+  def handle_work_warning(hostport, data)
+    handle, message = data.split("\0", 2)
+    Util.log "Got work_warning with handle #{handle} from #{hostport}: '#{message}'"
+    js_handle = Util.handle_to_str(hostport, handle)
+    tasks = @tasks_in_progress[js_handle]
+    if not tasks
+      raise ProtocolError, "Got unexpected work_warning with handle " +
+        "#{handle} from #{hostport} (no task by that name)"
+    end
+    tasks.each {|t| t.handle_warning(message) }
+  end
+  private :handle_work_warning
+
+  ##
   # Read and process a packet from a socket.
   #
   # @param sock  socket connected to a job server
@@ -217,6 +229,8 @@ class TaskSet
       handle_work_status(hostport, data)
     when :work_exception
       handle_work_exception(hostport, data)
+    when :work_warning
+      handle_work_warning(hostport, data)
     else
       Util.log "Got #{type.to_s} from #{hostport}"
     end

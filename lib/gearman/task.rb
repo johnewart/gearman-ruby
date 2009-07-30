@@ -17,8 +17,8 @@ class Task
   def initialize(func, arg='', opts={})
     @func = func.to_s
     @arg = arg or ''  # TODO: use something more ref-like?
-    %w{uniq on_complete on_fail on_retry on_exception on_status retry_count
-       priority background}.map {|s| s.to_sym }.each do |k|
+    %w{on_complete on_fail on_retry on_exception on_status on_warning 
+       uniq retry_count priority background}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
     end
@@ -67,6 +67,9 @@ class Task
   # Set a block of code to be executed when a remote exception is sent by a worker.
   # The block will receive the message of the exception passed from the worker.
   # The user can return true for retrying or false to mark it as finished
+  #
+  # NOTE: this is actually deprecated, cf. https://bugs.launchpad.net/gearmand/+bug/405732
+  #
   def on_exception(&f)
     @on_exception = f
   end
@@ -77,6 +80,15 @@ class Task
   # denominator describing the task's status.
   def on_status(&f)
     @on_status = f
+  end
+
+  ##
+  # Set a block of code to be executed when we receive a warning from a worker.
+  # It is recommended for workers to send work_warning, followed by work_fail if
+  # an exception occurs on their side. Don't expect this behavior from workers NOT
+  # using this very library ATM, though. (cf. https://bugs.launchpad.net/gearmand/+bug/405732)
+  def on_warning(&f)
+    @on_warning = f
   end
 
   ##
@@ -104,23 +116,25 @@ class Task
   end
 
   ##
-  # Record an exception and check whether we should be retried.
+  # Record an exception.
   #
-  # @return  true if we should be resubmitted; false otherwise
   def handle_exception(exception)
-    if @on_exception
-      should_retry = @on_exception.call(exception)
-      @retries_done += 1 if should_retry
-      should_retry
-    else
-      false
-    end
+    @on_exception.call(exception) if @on_exception
+    self
   end
 
   ##
   # Handle a status update for the task.
   def handle_status(numerator, denominator)
     @on_status.call(numerator, denominator) if @on_status
+    self
+  end
+  
+  ##
+  # Handle a warning.
+  #
+  def handle_warning(message)
+    @on_warning.call(message) if @on_warning
     self
   end
 
