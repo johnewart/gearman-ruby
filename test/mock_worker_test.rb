@@ -250,7 +250,10 @@ class TestWorker < Test::Unit::TestCase
 
     # When we give it a job, it should raise an excpetion and notify the server
     s.exec { @server.send_response(sock, :job_assign, "a\0echo\0foo") }
-    s.exec { @server.expect_request(sock, :work_exception, "a\0fooexception") }
+    s.exec do
+      @server.expect_request(sock, :work_warning, "a\0fooexception")
+      @server.expect_request(sock, :work_fail, "a")
+    end
 
     s.wait
   end

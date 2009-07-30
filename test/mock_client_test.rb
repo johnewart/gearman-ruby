@@ -218,7 +218,7 @@ class TestClient < Test::Unit::TestCase
   def test_callbacks
     server = FakeJobServer.new(self)
     client, task, taskset, sock = nil
-    failed, retries, num, den = nil
+    failed, retries, num, den, warning = nil
 
     s = TestScript.new
     c = TestScript.new
@@ -229,17 +229,18 @@ class TestClient < Test::Unit::TestCase
     c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
 
     task = Gearman::Task.new('foo', 'bar',
-      { :retry_count => 2 })
+      { :retry_count => 3 })
     task.on_fail { failed = true }
     task.on_retry {|r| retries = r }
     task.on_status {|n,d| num = n.to_i; den = d.to_i }
+    task.on_warning {|msg| warning = msg }
 
     c.exec { taskset = Gearman::TaskSet.new(client) }
     c.exec { taskset.add_task(task) }
     s.exec { sock = server.expect_connection }
     s.wait
 
-    # Send three failures back to the client.
+    # Send 4 failures back to the client.
     c.exec { taskset.wait }
     s.exec { server.expect_request(sock, :submit_job, "foo\000\000bar") }
     s.exec { server.send_response(sock, :job_created, 'a') }
@@ -251,13 +252,17 @@ class TestClient < Test::Unit::TestCase
     s.exec { server.send_response(sock, :job_created, 'c') }
     s.exec { server.send_response(sock, :work_status, "c\0001\0002") }
     s.exec { server.send_response(sock, :work_fail, 'c') }
+    s.exec { server.send_response(sock, :job_created, 'd') }
+    s.exec { server.send_response(sock, :work_warning, "d\000warning") }
+    s.exec { server.send_response(sock, :work_fail, 'd') }
     c.wait
     s.wait
 
     assert_equal(true, failed)
-    assert_equal(2, retries)
+    assert_equal(3, retries)
     assert_equal(1, num)
     assert_equal(2, den)
+    assert_equal("warning", warning)
   end
 
   def test_failure
