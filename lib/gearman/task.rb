@@ -31,7 +31,7 @@ class Task
     @hash = nil
   end
   attr_accessor :uniq, :retry_count, :priority, :background
-  attr_reader :successful, :func, :arg
+  attr_reader :successful, :func, :arg, :retries_done
 
   ##
   # Internal method to reset this task's state so it can be run again.
