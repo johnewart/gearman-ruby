@@ -11,7 +11,7 @@ begin
     s.email = "ladislav.martincik@xing.com"
     s.homepage = "http://github.com/xing/gearman-ruby"
     s.description = "Library for the Gearman distributed job system"
-    s.authors = ["Daniel Erat", "Ladislav Martincik"]
+    s.authors = ["Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
   end
 rescue LoadError
   puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
