@@ -87,6 +87,14 @@ class Worker
       Util.send_request(@socket, req)
       self
     end
+
+    ##
+    # Send a warning explicitly
+    def report_warning(warning)
+      req = Util.pack_request(:work_warning, "#{@handle}\0#{warning}")
+      Util.send_request(@socket, req)
+      self
+    end
   end
 
   ##
