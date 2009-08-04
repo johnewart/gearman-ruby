@@ -175,6 +175,19 @@ class TaskSet
   end
   private :handle_work_warning
 
+  def handle_work_data(hostport, data)
+    handle, data = data.split("\0", 2)
+    Util.log "Got work_data with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
+
+    js_handle = Util.handle_to_str(hostport, handle)
+    tasks = @tasks_in_progress[js_handle]
+    if not tasks
+      raise ProtocolError, "Got unexpected work_data with handle #{handle} from #{hostport} (no task by that name)"
+    end
+    tasks.each {|t| t.handle_data(data) }
+  end
+  private :handle_work_data
+
   ##
   # Read and process a packet from a socket.
   #
@@ -191,7 +204,8 @@ class TaskSet
                     :work_fail,
                     :work_status,
                     :work_exception,
-                    :work_warning ]
+                    :work_warning,
+                    :work_data ]
 
     if known_types.include?(type)
       send("handle_#{type}".to_sym, hostport, data)
