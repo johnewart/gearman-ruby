@@ -218,19 +218,15 @@ class TaskSet
         sock.inspect
     end
     type, data = Util.read_response(sock, timeout)
-    case type
-    when :job_created
-      handle_job_created(hostport, data)
-    when :work_complete
-      handle_work_complete(hostport, data)
-    when :work_fail
-      handle_work_fail(hostport, data)
-    when :work_status
-      handle_work_status(hostport, data)
-    when :work_exception
-      handle_work_exception(hostport, data)
-    when :work_warning
-      handle_work_warning(hostport, data)
+    known_types = [ :job_created,
+                    :work_complete,
+                    :work_fail,
+                    :work_status,
+                    :work_exception,
+                    :work_warning ]
+
+    if known_types.include?(type)
+      send("handle_#{type}".to_sym, hostport, data)
     else
       Util.log "Got #{type.to_s} from #{hostport}"
     end
