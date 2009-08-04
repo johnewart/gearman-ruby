@@ -17,7 +17,7 @@ class Task
   def initialize(func, arg='', opts={})
     @func = func.to_s
     @arg = arg or ''  # TODO: use something more ref-like?
-    %w{on_complete on_fail on_retry on_exception on_status on_warning 
+    %w{on_complete on_fail on_retry on_exception on_status on_warning on_data
        uniq retry_count priority background}.map {|s| s.to_sym }.each do |k|
       instance_variable_set "@#{k}", opts[k]
       opts.delete k
@@ -92,6 +92,13 @@ class Task
   end
 
   ##
+  # Set a block of code to be executed when we receive a (partial) data packet for this task.
+  # The data received will be passed as an argument to the block.
+  def on_data(&f)
+    @on_data = f
+  end
+
+  ##
   # Handle completion of the task.
   #
   # @param data  data returned from the server (doesn't include handle)
@@ -129,12 +136,19 @@ class Task
     @on_status.call(numerator, denominator) if @on_status
     self
   end
-  
+
   ##
   # Handle a warning.
   #
   def handle_warning(message)
     @on_warning.call(message) if @on_warning
+    self
+  end
+
+  ##
+  # Handle (partial) data
+  def handle_data(data)
+    @on_data.call(data) if @on_data
     self
   end
 

@@ -175,6 +175,11 @@ class TaskSet
   end
   private :handle_work_warning
 
+  ##
+  # Handle a 'work_data' response from a job server
+  #
+  # @param hostport  "host:port" of a job server
+  # @param data       data returned in packet from server
   def handle_work_data(hostport, data)
     handle, data = data.split("\0", 2)
     Util.log "Got work_data with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
