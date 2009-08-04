@@ -79,6 +79,14 @@ class Worker
       Util.send_request(@socket, req)
       self
     end
+
+    ##
+    # Send data before job completes
+    def send_data(data)
+      req = Util.pack_request(:work_data, "#{@handle}\0#{data}")
+      Util.send_request(@socket, req)
+      self
+    end
   end
 
   ##
