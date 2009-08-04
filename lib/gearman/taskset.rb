@@ -113,15 +113,8 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_complete(hostport, data)
     handle, data = data.split("\0", 2)
-    Util.log "Got work_complete with handle #{handle} and " +
-      "#{data ? data.size : '0'} byte(s) of data from #{hostport}"
-    js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress.delete(js_handle)
-    if not tasks
-      raise ProtocolError, "Got unexpected work_complete with handle " +
-        "#{handle} from #{hostport} (no task by that name)"
-    end
-    tasks.each do |t|
+    Util.log "Got work_complete with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
+    tasks_in_progress(hostport, handle, true).each do |t|
       t.handle_completion(data)
       @finished_tasks << t
     end
@@ -137,13 +130,7 @@ class TaskSet
   def handle_work_exception(hostport, data)
     handle, exception = data.split("\0", 2)
     Util.log "Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
-    js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress[js_handle]
-    if not tasks
-      raise ProtocolError, "Got unexpected work_exception with handle " +
-        "#{handle} from #{hostport} (no task by that name)"
-    end
-    tasks.each {|t| t.handle_exception(exception) }
+    tasks_in_progress(hostport, handle).each {|t| t.handle_exception(exception) }
   end
   private :handle_work_exception
 
@@ -154,13 +141,7 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_fail(hostport, data)
     Util.log "Got work_fail with handle #{data} from #{hostport}"
-    js_handle = Util.handle_to_str(hostport, data)
-    tasks = @tasks_in_progress.delete(js_handle)
-    if not tasks
-      raise ProtocolError, "Got unexpected work_fail with handle " +
-        "#{data} from #{hostport} (no task by that name)"
-    end
-    tasks.each do |t|
+    tasks_in_progress(hostport, data, true).each do |t|
       if t.handle_failure
         add_task_internal(t, false)
       else
@@ -177,15 +158,8 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_status(hostport, data)
     handle, num, den = data.split("\0", 3)
-    Util.log "Got work_status with handle #{handle} from #{hostport}: " +
-      "#{num}/#{den}"
-    js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress[js_handle]
-    if not tasks
-      raise ProtocolError, "Got unexpected work_status with handle " +
-        "#{handle} from #{hostport} (no task by that name)"
-    end
-    tasks.each {|t| t.handle_status(num, den) }
+    Util.log "Got work_status with handle #{handle} from #{hostport}: #{num}/#{den}"
+    tasks_in_progress(hostport, handle).each {|t| t.handle_status(num, den) }
   end
   private :handle_work_status
 
@@ -197,13 +171,7 @@ class TaskSet
   def handle_work_warning(hostport, data)
     handle, message = data.split("\0", 2)
     Util.log "Got work_warning with handle #{handle} from #{hostport}: '#{message}'"
-    js_handle = Util.handle_to_str(hostport, handle)
-    tasks = @tasks_in_progress[js_handle]
-    if not tasks
-      raise ProtocolError, "Got unexpected work_warning with handle " +
-        "#{handle} from #{hostport} (no task by that name)"
-    end
-    tasks.each {|t| t.handle_warning(message) }
+    tasks_in_progress(hostport, handle).each {|t| t.handle_warning(message) }
   end
   private :handle_work_warning
 
@@ -274,6 +242,16 @@ class TaskSet
     end
     true
   end
+  
+  private
+    def tasks_in_progress(hostport, handle, remove_task = false)
+      js_handle = Util.handle_to_str(hostport, handle)
+      tasks = remove_task ? @tasks_in_progress.delete(js_handle) : @tasks_in_progress[js_handle]
+      if not tasks
+        raise ProtocolError, "Got unexpected work_data with handle #{handle} from #{hostport} (no task by that name)"
+      end
+      tasks
+    end
 end
 
 end
