@@ -41,7 +41,14 @@ class TestWorker < Test::Unit::TestCase
     # After it connects, it should send its ID, and it should tell us its
     # abilities when we report them.
     s.exec { @server.expect_request(sock, :set_client_id, 'test') }
-    w.exec { worker.add_ability('echo') {|d,j| j.report_status(1, 1); d } }
+    w.exec do
+      worker.add_ability('echo') do |data, job| 
+        job.report_status(1, 1);
+        part1, part2 = data.split(//, 2)
+        job.send_data(part1) # send partial data first
+        part2
+      end
+    end
     s.exec { @server.expect_request(sock, :can_do, 'echo') }
 
     # It should try to grab a job when we tell it to work.
@@ -59,7 +66,8 @@ class TestWorker < Test::Unit::TestCase
     # When we give it a job, it should do it.
     s.exec { @server.send_response(sock, :job_assign, "a\0echo\0foo") }
     s.exec { @server.expect_request(sock, :work_status, "a\0001\0001") }
-    s.exec { @server.expect_request(sock, :work_complete, "a\0foo") }
+    s.exec { @server.expect_request(sock, :work_data, "a\000f") }
+    s.exec { @server.expect_request(sock, :work_complete, "a\0oo") }
 
     # Test that functions are unregistered correctly.
     w.exec { worker.remove_ability('echo') }

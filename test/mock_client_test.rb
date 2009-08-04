@@ -228,12 +228,13 @@ class TestClient < Test::Unit::TestCase
 
     c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
 
-    task = Gearman::Task.new('foo', 'bar',
-      { :retry_count => 3 })
+    task = Gearman::Task.new('foo', 'bar', { :retry_count => 3 })
     task.on_fail { failed = true }
     task.on_retry {|r| retries = r }
     task.on_status {|n,d| num = n.to_i; den = d.to_i }
     task.on_warning {|msg| warning = msg }
+    received_data = ""
+    task.on_data {|data| received_data << data }
 
     c.exec { taskset = Gearman::TaskSet.new(client) }
     c.exec { taskset.add_task(task) }
@@ -253,6 +254,8 @@ class TestClient < Test::Unit::TestCase
     s.exec { server.send_response(sock, :work_status, "c\0001\0002") }
     s.exec { server.send_response(sock, :work_fail, 'c') }
     s.exec { server.send_response(sock, :job_created, 'd') }
+    s.exec { server.send_response(sock, :work_data, "d\000data chunk 1") }
+    s.exec { server.send_response(sock, :work_data, "d\000data chunk 2") }
     s.exec { server.send_response(sock, :work_warning, "d\000warning") }
     s.exec { server.send_response(sock, :work_fail, 'd') }
     c.wait
@@ -262,6 +265,7 @@ class TestClient < Test::Unit::TestCase
     assert_equal(3, retries)
     assert_equal(1, num)
     assert_equal(2, den)
+    assert_equal("data chunk 1data chunk 2", received_data)
     assert_equal("warning", warning)
   end
 
@@ -586,5 +590,40 @@ class TestClient < Test::Unit::TestCase
     s.wait
 
     assert_equal(false, res)
+  end
+  
+  ##
+  # Tests partial data responses (work_data)
+  def test_chunked_data
+    server = FakeJobServer.new(self)
+    client, sock, task, taskset, res = nil
+
+    s = TestScript.new
+    c = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    client_thread = Thread.new { c.loop_forever }.run
+
+    c.exec { client = Gearman::Client.new("localhost:#{server.port}") }
+    task = Gearman::Task.new('foo', 'bar', { :retry_count => 3 })
+    received_data = ""
+    task.on_data {|data| received_data << data }
+    task.on_complete {|data| received_data << data}
+
+    c.exec { taskset = Gearman::TaskSet.new(client) }
+    c.exec { taskset.add_task(task) }
+    s.exec { sock = server.expect_connection }
+    s.wait
+
+    c.exec { taskset.wait }
+    s.exec { server.expect_request(sock, :submit_job, "foo\000\000bar") }
+    s.exec { server.send_response(sock, :job_created, 'a') }
+    s.exec { server.send_response(sock, :work_data, "a\000data chunk 1\n") }
+    s.exec { server.send_response(sock, :work_data, "a\000data chunk 2\n") }
+    s.exec { server.send_response(sock, :work_complete, "a\000data complete") }
+    c.wait
+    s.wait
+
+    assert_equal("data chunk 1\ndata chunk 2\ndata complete", received_data)
   end
 end
