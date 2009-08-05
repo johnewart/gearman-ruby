@@ -226,11 +226,21 @@ class TaskSet
   #
   # @param timeout  maximum amount of time to wait, in seconds
   def wait(timeout=1)
-    end_time = Time.now.to_f + timeout
+    end_time = if timeout
+      Time.now.to_f + timeout
+    else
+      nil
+    end
+
     while not @tasks_in_progress.empty?
-      remaining = end_time - Time.now.to_f
-      ready_socks = IO::select(
-        @sockets.values, nil, nil, remaining > 0 ? remaining : 0)
+      remaining = if end_time
+        end_time - Time.now.to_f
+      else
+        nil
+      end
+      remaining = 0 if remaining != nil && remaining < 0
+
+      ready_socks = IO::select(@sockets.values, nil, nil, remaining)
       if not ready_socks or not ready_socks[0]
         Util.log "Timed out while waiting for tasks to finish"
         # not sure what state the connections are in, so just be lame and
@@ -241,7 +251,7 @@ class TaskSet
       end
       ready_socks[0].each do |sock|
         begin
-          read_packet(sock, end_time - Time.now.to_f)
+          read_packet(sock, (end_time ? end_time - Time.now.to_f : nil))
         rescue ProtocolError
           hostport = @client.get_hostport_for_socket(sock)
           Util.log "Ignoring bad packet from #{hostport}"
@@ -261,7 +271,7 @@ class TaskSet
     end
     true
   end
-  
+
   private
     def tasks_in_progress(hostport, handle, remove_task = false)
       js_handle = Util.handle_to_str(hostport, handle)
