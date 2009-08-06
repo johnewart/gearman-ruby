@@ -225,7 +225,7 @@ class TaskSet
   # Wait for all tasks in the set to finish.
   #
   # @param timeout  maximum amount of time to wait, in seconds
-  def wait(timeout=1)
+  def wait(timeout = 1)
     end_time = if timeout
       Time.now.to_f + timeout
     else
@@ -234,11 +234,10 @@ class TaskSet
 
     while not @tasks_in_progress.empty?
       remaining = if end_time
-        end_time - Time.now.to_f
+        (t = end_time - Time.now.to_f) > 0 ? t : 0
       else
         nil
       end
-      remaining = 0 if remaining != nil && remaining < 0
 
       ready_socks = IO::select(@sockets.values, nil, nil, remaining)
       if not ready_socks or not ready_socks[0]
