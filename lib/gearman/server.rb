@@ -77,11 +77,11 @@ class Server
     workers = []
     if response = send_command('workers')
       response.split("\n").each do |line|
-        if line.match /^(\d+)\s([a-z0-9\:]+)\s([A-Z\-])\s:\s([a-z_\s\t]+)$/
+        if line.match /^(\d+)\s([a-z0-9\:\.]+)\s([^\s]+)\s:\s([a-z_\s\t]+)$/
           func_parts = $4.split(' ')
           functions = []
           while !func_parts.empty?
-            functions << func_parts.shift + '.' + func_parts.shift
+            functions << func_parts.shift << '.' << func_parts.shift
           end
           workers << { :host => $2, :status => $3, :functions => functions }
         end
