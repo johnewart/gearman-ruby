@@ -332,8 +332,8 @@ class Worker
             else
               Util.log "Got #{type.to_s} from #{hostport}"
             end
-          rescue Gearman::ServerDownException, NetworkError, Errno::ECONNRESET
-            Util.log "Server #{hostport} timed out or lost connection; marking bad"
+          rescue => e
+            Util.log "Server #{hostport} timed out or lost connection (#{e.inspect}); marking bad"
             bad_servers << hostport
             break
           end
