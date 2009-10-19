@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{gearman-ruby}
-  s.version = "1.3.2"
+  s.name = %q{xing-gearman-ruby}
+  s.version = "1.3.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
-  s.date = %q{2009-10-16}
+  s.date = %q{2009-10-19}
   s.description = %q{Library for the Gearman distributed job system}
   s.email = %q{ladislav.martincik@xing.com}
   s.extra_rdoc_files = [
