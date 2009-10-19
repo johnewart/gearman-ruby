@@ -332,8 +332,8 @@ class Worker
             else
               Util.log "Got #{type.to_s} from #{hostport}"
             end
-          rescue => e
-            Util.log "Server #{hostport} timed out or lost connection (#{e.inspect}); marking bad"
+          rescue Exception
+            Util.log "Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
             bad_servers << hostport
             break
           end
