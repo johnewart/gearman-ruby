@@ -31,7 +31,7 @@ class Client
   #
   # @options options to pass to the servers  "exeptions"
   def option_request(opts)
-    Util.log "Send options request with #{opts}"
+    Util.logger.debug "GearmanRuby: Send options request with #{opts}"
     request = Util.pack_request("option_req", opts)
     sock= self.get_socket(self.get_job_server)
     Util.send_request(sock, request)
@@ -104,7 +104,7 @@ class Client
     hostport = get_hostport_for_socket(sock)
     if not hostport
       inet, port, host, ip = s.addr
-      Util.err "Got socket for #{ip}:#{port}, which we don't " +
+      Util.logger.error "GearmanRuby: Got socket for #{ip}:#{port}, which we don't " +
         "know about -- closing"
       sock.close
       return

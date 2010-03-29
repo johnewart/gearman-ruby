@@ -6,7 +6,7 @@ require 'rcov/rcovtask'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |s|
-    s.name = "gearman-ruby"
+    s.name = "xing-gearman-ruby"
     s.summary = "Library for the Gearman distributed job system"
     s.email = "ladislav.martincik@xing.com"
     s.homepage = "http://github.com/xing/gearman-ruby"

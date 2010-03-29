@@ -2,6 +2,7 @@
 
 require 'socket'
 require 'time'
+require 'logger'
 
 module Gearman
 
@@ -59,14 +60,17 @@ class Util
   # Default job server port.
   DEFAULT_PORT = 7003
 
-  @@debug = false
+  def Util.logger=(logger)
+    @logger = logger
+  end
 
-  ##
-  # Enable or disable debugging output (off by default).
-  #
-  # @param v  print debugging output
-  def Util.debug=(v)
-    @@debug = v
+  def Util.logger
+    @logger ||=
+      begin
+        l = Logger.new($stdout)
+        l.level = Logger::FATAL
+        l
+      end
   end
 
   ##
@@ -181,22 +185,6 @@ class Util
   def Util.str_to_handle(str)
     str =~ %r{^([^:]+:\d+)//(.+)}
     return [$1, $3]
-  end
-
-  ##
-  # Log a message if debugging is enabled.
-  #
-  # @param str  message to log
-  def Util.log(str, force=false)
-    puts "#{Time.now.strftime '%Y%m%d %H%M%S'} #{str}" if force or @@debug
-  end
-
-  ##
-  # Log a message no matter what.
-  #
-  # @param str  message to log
-  def Util.err(str)
-    log(str, true)
   end
 
   def self.with_safe_socket_op

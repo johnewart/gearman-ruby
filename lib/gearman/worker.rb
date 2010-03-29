@@ -168,7 +168,7 @@ class Worker
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
       if not servers.include? server
-        Util.log "Disconnecting from old server #{server}"
+        Util.logger.debug "GearmanRuby: Disconnecting from old server #{server}"
         sock.close
         @sockets.delete(server)
       end
@@ -177,11 +177,11 @@ class Worker
     servers.each do |server|
       if not @sockets[server]
         begin
-          Util.log "Connecting to server #{server}"
+          Util.logger.debug "GearmanRuby: Connecting to server #{server}"
           @sockets[server] = connect(server)
         rescue NetworkError, Errno::ECONNRESET
           @bad_servers << server
-          Util.log "Unable to connect to #{server}"
+          Util.logger.debug "GearmanRuby: Unable to connect to #{server}"
         end
       end
     end
@@ -260,16 +260,16 @@ class Worker
   def handle_job_assign(data, sock, hostport)
     handle, func, data = data.split("\0", 3)
     if not func
-      Util.err "Ignoring job_assign with no function from #{hostport}"
+      Util.logger.error "GearmanRuby: Ignoring job_assign with no function from #{hostport}"
       return false
     end
 
-    Util.log "Got job_assign with handle #{handle} and #{data.size} byte(s) " +
+    Util.logger.error "GearmanRuby: Got job_assign with handle #{handle} and #{data.size} byte(s) " +
       "from #{hostport}"
 
     ability = @abilities[func]
     if not ability
-      Util.err "Ignoring job_assign for unsupported func #{func} " +
+      Util.logger.error "Ignoring job_assign for unsupported func #{func} " +
         "with handle #{handle} from #{hostport}"
       Util.send_request(sock, Util.pack_request(:work_fail, handle))
       return false
@@ -285,14 +285,14 @@ class Worker
 
     cmd = if ret && exception.nil?
       ret = ret.to_s
-      Util.log "Sending work_complete for #{handle} with #{ret.size} byte(s) " +
+      Util.logger.debug "GearmanRuby: Sending work_complete for #{handle} with #{ret.size} byte(s) " +
         "to #{hostport}"
       [ Util.pack_request(:work_complete, "#{handle}\0#{ret}") ]
     elsif exception.nil?
-      Util.log "Sending work_fail for #{handle} to #{hostport}"
+      Util.logger.debug "GearmanRuby: Sending work_fail for #{handle} to #{hostport}"
       [ Util.pack_request(:work_fail, handle) ]
     elsif exception
-      Util.log "Sending work_warning, work_fail for #{handle} to #{hostport}"
+      Util.logger.debug "GearmanRuby: Sending work_warning, work_fail for #{handle} to #{hostport}"
       [ Util.pack_request(:work_warning, "#{handle}\0#{exception.message}"),
         Util.pack_request(:work_fail, handle) ]
     end
@@ -312,7 +312,7 @@ class Worker
       servers = nil
       @servers_mutex.synchronize { servers = @sockets.keys.sort }
       servers.each do |hostport|
-        Util.log "Sending grab_job to #{hostport}"
+        Util.logger.debug "GearmanRuby: Sending grab_job to #{hostport}"
         sock = @sockets[hostport]
         Util.send_request(sock, req)
 
@@ -324,16 +324,16 @@ class Worker
             type, data = Util.read_response(sock, @network_timeout_sec)
             case type
             when :no_job
-              Util.log "Got no_job from #{hostport}"
+              Util.logger.debug "GearmanRuby: Got no_job from #{hostport}"
               break
             when :job_assign
               return if handle_job_assign(data, sock, hostport)
               break
             else
-              Util.log "Got #{type.to_s} from #{hostport}"
+              Util.logger.debug "GearmanRuby: Got #{type.to_s} from #{hostport}"
             end
           rescue Exception
-            Util.log "Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
+            Util.logger.debug "GearmanRuby: Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
             bad_servers << hostport
             break
           end
@@ -348,7 +348,7 @@ class Worker
         end
       end
 
-      Util.log "Sending pre_sleep and going to sleep for #{@reconnect_sec} sec"
+      Util.logger.debug "GearmanRuby: Sending pre_sleep and going to sleep for #{@reconnect_sec} sec"
       @servers_mutex.synchronize do
         @sockets.values.each do |sock|
           Util.send_request(sock, Util.pack_request(:pre_sleep))

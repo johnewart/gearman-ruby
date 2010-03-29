@@ -66,13 +66,13 @@ class TaskSet
         should_try_rehash = false
       end
     end
-    Util.log "Using socket #{sock.inspect} for #{hostport}"
+    Util.logger.debug "GearmanRuby: Using socket #{sock.inspect} for #{hostport}"
     Util.send_request(sock, req)
     while @task_waiting_for_handle
       begin
         read_packet(sock, @client.task_create_timeout_sec)
       rescue NetworkError
-        Util.log "Got timeout on read from #{hostport}"
+        Util.logger.debug "GearmanRuby: Got timeout on read from #{hostport}"
         @task_waiting_for_handle = nil
         @client.close_socket(sock)
         return false
@@ -90,7 +90,7 @@ class TaskSet
   # @param hostport  "host:port" of job server
   # @param data      data returned in packet from server
   def handle_job_created(hostport, data)
-    Util.log "Got job_created with handle #{data} from #{hostport}"
+    Util.logger.debug "GearmanRuby: Got job_created with handle #{data} from #{hostport}"
     if not @task_waiting_for_handle
       raise ProtocolError, "Got unexpected job_created notification " + "with handle #{data} from #{hostport}"
     end
@@ -113,7 +113,7 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_complete(hostport, data)
     handle, data = data.split("\0", 2)
-    Util.log "Got work_complete with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
+    Util.logger.debug "GearmanRuby: Got work_complete with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
     tasks_in_progress(hostport, handle, true).each do |t|
       t.handle_completion(data)
       @finished_tasks << t
@@ -129,7 +129,7 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_exception(hostport, data)
     handle, exception = data.split("\0", 2)
-    Util.log "Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
+    Util.logger.debug "GearmanRuby: Got work_exception with handle #{handle} from #{hostport}: '#{exception}'"
     tasks_in_progress(hostport, handle).each {|t| t.handle_exception(exception) }
   end
   private :handle_work_exception
@@ -140,7 +140,7 @@ class TaskSet
   # @param hostport  "host:port" of job server
   # @param data      data returned in packet from server
   def handle_work_fail(hostport, data)
-    Util.log "Got work_fail with handle #{data} from #{hostport}"
+    Util.logger.debug "GearmanRuby: Got work_fail with handle #{data} from #{hostport}"
     tasks_in_progress(hostport, data, true).each do |t|
       if t.handle_failure
         add_task_internal(t, false)
@@ -158,7 +158,7 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_work_status(hostport, data)
     handle, num, den = data.split("\0", 3)
-    Util.log "Got work_status with handle #{handle} from #{hostport}: #{num}/#{den}"
+    Util.logger.debug "GearmanRuby: Got work_status with handle #{handle} from #{hostport}: #{num}/#{den}"
     tasks_in_progress(hostport, handle).each {|t| t.handle_status(num, den) }
   end
   private :handle_work_status
@@ -170,7 +170,7 @@ class TaskSet
   # @param data     data returned in packet from server
   def handle_work_warning(hostport, data)
     handle, message = data.split("\0", 2)
-    Util.log "Got work_warning with handle #{handle} from #{hostport}: '#{message}'"
+    Util.logger.debug "GearmanRuby: Got work_warning with handle #{handle} from #{hostport}: '#{message}'"
     tasks_in_progress(hostport, handle).each {|t| t.handle_warning(message) }
   end
   private :handle_work_warning
@@ -182,7 +182,7 @@ class TaskSet
   # @param data       data returned in packet from server
   def handle_work_data(hostport, data)
     handle, data = data.split("\0", 2)
-    Util.log "Got work_data with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
+    Util.logger.debug "GearmanRuby: Got work_data with handle #{handle} and #{data ? data.size : '0'} byte(s) of data from #{hostport}"
 
     js_handle = Util.handle_to_str(hostport, handle)
     tasks = @tasks_in_progress[js_handle]
@@ -215,7 +215,7 @@ class TaskSet
     if known_types.include?(type)
       send("handle_#{type}".to_sym, hostport, data)
     else
-      Util.log "Got #{type.to_s} from #{hostport}"
+      Util.logger.debug "GearmanRuby: Got #{type.to_s} from #{hostport}"
     end
     nil
   end
@@ -241,7 +241,7 @@ class TaskSet
 
       ready_socks = IO::select(@sockets.values, nil, nil, remaining)
       if not ready_socks or not ready_socks[0]
-        Util.log "Timed out while waiting for tasks to finish"
+        Util.logger.debug "GearmanRuby: Timed out while waiting for tasks to finish"
         # not sure what state the connections are in, so just be lame and
         # close them for now
         @sockets.values.each {|s| @client.close_socket(s) }
@@ -253,10 +253,10 @@ class TaskSet
           read_packet(sock, (end_time ? end_time - Time.now.to_f : nil))
         rescue ProtocolError
           hostport = @client.get_hostport_for_socket(sock)
-          Util.log "Ignoring bad packet from #{hostport}"
+          Util.logger.debug "GearmanRuby: Ignoring bad packet from #{hostport}"
         rescue NetworkError
           hostport = @client.get_hostport_for_socket(sock)
-          Util.log "Got timeout on read from #{hostport}"
+          Util.logger.debug "GearmanRuby: Got timeout on read from #{hostport}"
         end
       end
     end
@@ -264,7 +264,7 @@ class TaskSet
     @sockets = {}
     @finished_tasks.each do |t|
       if ( (t.background.nil? || t.background == false) && !t.successful)
-        Util.log "Taskset failed"
+        Util.logger.debug "GearmanRuby: Taskset failed"
         return false
       end
     end
