@@ -239,7 +239,7 @@ class TaskSet
         nil
       end
 
-      ready_socks = IO::select(@sockets.values, nil, nil, remaining)
+      ready_socks = remaining == 0 ? nil : IO::select(@sockets.values, nil, nil, remaining)
       if not ready_socks or not ready_socks[0]
         Util.logger.debug "GearmanRuby: Timed out while waiting for tasks to finish"
         # not sure what state the connections are in, so just be lame and
@@ -260,6 +260,7 @@ class TaskSet
         end
       end
     end
+
     @sockets.values.each {|s| @client.return_socket(s) }
     @sockets = {}
     @finished_tasks.each do |t|
