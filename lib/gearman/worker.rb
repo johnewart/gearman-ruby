@@ -179,7 +179,7 @@ class Worker
         begin
           Util.logger.debug "GearmanRuby: Connecting to server #{server}"
           @sockets[server] = connect(server)
-        rescue NetworkError, Errno::ECONNRESET
+        rescue NetworkError
           @bad_servers << server
           Util.logger.debug "GearmanRuby: Unable to connect to #{server}"
         end
@@ -196,13 +196,16 @@ class Worker
     begin
       # FIXME: handle timeouts
       sock = TCPSocket.new(*hostport.split(':'))
-    rescue Errno::ECONNREFUSED
+    rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH
+      raise NetworkError
+    rescue Exception => e
+      Util.logger.debug "GearmanRuby: Unhandled exception while connecting to #{hostport} : #{e} (raising NetworkError exception)"
       raise NetworkError
     end
     # FIXME: catch exceptions; do something smart
     Util.send_request(sock, Util.pack_request(:set_client_id, @client_id))
     @abilities.each {|f,a| announce_ability(sock, f, a.timeout) }
-    @sockets[hostport] = sock
+    sock
   end
   private :connect
 
