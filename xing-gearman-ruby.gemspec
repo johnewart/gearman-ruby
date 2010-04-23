@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{xing-gearman-ruby}
-  s.version = "1.3.5"
+  s.version = "1.3.6"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
-  s.date = %q{2010-03-31}
+  s.date = %q{2010-04-23}
   s.description = %q{Library for the Gearman distributed job system}
   s.email = %q{ladislav.martincik@xing.com}
   s.extra_rdoc_files = [
