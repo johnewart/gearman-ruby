@@ -120,10 +120,12 @@ class Worker
     end
     @reconnect_sec = 30 if not @reconnect_sec
     @network_timeout_sec = 5 if not @network_timeout_sec
+    @worker_enabled = true
+    @status = :preparing
     self.job_servers = job_servers if job_servers
     start_reconnect_thread
   end
-  attr_accessor :client_id, :reconnect_sec, :network_timeout_sec, :bad_servers
+  attr_accessor :client_id, :reconnect_sec, :network_timeout_sec, :bad_servers, :worker_enabled, :status
 
   # Start a thread to repeatedly attempt to connect to down job servers.
   def start_reconnect_thread
@@ -309,6 +311,7 @@ class Worker
   def work
     req = Util.pack_request(:grab_job)
     loop do
+      @status = :preparing
       bad_servers = []
       # We iterate through the servers in sorted order to make testing
       # easier.
@@ -330,7 +333,8 @@ class Worker
               Util.logger.debug "GearmanRuby: Got no_job from #{hostport}"
               break
             when :job_assign
-              return if handle_job_assign(data, sock, hostport)
+              @status = :working
+              return worker_enabled if handle_job_assign(data, sock, hostport)
               break
             else
               Util.logger.debug "GearmanRuby: Got #{type.to_s} from #{hostport}"
@@ -357,6 +361,9 @@ class Worker
           Util.send_request(sock, Util.pack_request(:pre_sleep))
         end
       end
+
+      return false unless worker_enabled
+      @status = :waiting
 
       # FIXME: We could optimize things the next time through the 'each' by
       # sending the first grab_job to one of the servers that had a socket

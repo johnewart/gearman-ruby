@@ -265,4 +265,57 @@ class TestWorker < Test::Unit::TestCase
 
     s.wait
   end
+  
+  def test_worker_enabled
+    @server = FakeJobServer.new(self)
+    worker = nil
+    sock = nil
+    @result = nil
+
+    s = TestScript.new
+    w = TestScript.new
+
+    server_thread = Thread.new { s.loop_forever }.run
+    worker_thread = Thread.new { w.loop_forever }.run
+
+    # Create a worker and wait for it to connect to us.
+    w.exec {
+      worker = Gearman::Worker.new(
+        "localhost:#{@server.port}", { :client_id => 'test' })
+    }
+    s.exec { sock = @server.expect_connection }
+    s.wait
+
+    # After it connects, it should send its ID, and it should tell us its
+    # abilities when we report them.
+    s.exec { @server.expect_request(sock, :set_client_id, 'test') }
+    w.exec do
+      worker.add_ability('echo') do |data, job| 
+        job.report_status(1, 1);
+        part1, part2 = data.split(//, 2)
+        job.send_data(part1) # send partial data first
+        part2
+      end
+    end
+    s.exec { @server.expect_request(sock, :can_do, 'echo') }
+
+    # When we set to false worker_enabled, worker.work shall return false
+    s.exec { @server.send_response(sock, :job_assign, "a\0echo\0foo") }
+    w.exec { worker.worker_enabled = false; @result = worker.work }
+    w.wait
+    assert_equal false, @result
+
+    # When we set to true worker_enabled, worker.work shall return true
+    s.exec { @server.send_response(sock, :job_assign, "a\0echo\0foo") }
+    w.exec { worker.worker_enabled = true; @result = worker.work }
+    w.wait
+    assert_equal true, @result
+
+    # when there are no jobs pending, and set to false worker_enabled, worker.work shall return false
+    s.exec { @server.send_response(sock, :no_job) }
+    w.exec { worker.worker_enabled = false; @result = worker.work }
+    w.wait
+    assert_equal false, @result
+  end
+  
 end
