@@ -24,6 +24,8 @@ class Util
     7  => :submit_job,      # C->J: FUNC[0]UNIQ[0]ARGS
     21 => :submit_job_high, # C->J: FUNC[0]UNIQ[0]ARGS
     18 => :submit_job_bg,   # C->J: FUNC[0]UNIQ[0]ARGS
+    35 => :submit_job_sched,# C->J: FUNC[0]UNIQ[0]MINUTE[0]HOUR[0]DAY[0]MONTH[0]DOW[0]ARGS
+    36 => :submit_job_epoch,# C->J: FUNC[0]UNIQ[0]EPOCH[0]ARGS
 
     8  => :job_created,     # J->C: HANDLE
     9  => :grab_job,        # W->J: --

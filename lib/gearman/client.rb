@@ -27,6 +27,27 @@ class Client
   attr_accessor :prefix, :test_hostport, :task_create_timeout_sec
 
   ##
+  # Schedule this job to run at a certain time (like `cron`)
+  # XXX: But there is no wildcard??
+  #
+  # @param minute   Minute (00-59)
+  # @param hour     Hour (00-23)
+  # @param day      Day (0-31)
+  # @param month    Month (1-12)
+  # @param dow      Day of Week (0-6, 0 = Monday)
+  def schedule(*args)
+    @sched = args
+  end
+
+  ##
+  # Schedule this job to be run once at a certain time (like `at`)
+  #
+  # @param epoch    Unix epoch time, in seconds
+  def epoch(epoch)
+    @epoch = epoch
+  end
+
+  ##
   # Set the job servers to be used by this client.
   #
   # @param servers  "host:port"; either a single server or an array

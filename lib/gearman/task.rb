@@ -31,7 +31,7 @@ class Task
   end
   attr_accessor :uniq, :retry_count, :high_priority
   attr_reader :successful, :func, :arg
-
+  
   ##
   # Internal method to reset this task's state so it can be run again.
   # Called by TaskSet#add_task.
@@ -119,10 +119,23 @@ class Task
   # @param background  ??
   # @return            String representation of packet
   def get_submit_packet(prefix=nil, background=false)
-    mode = 'submit_job' +
-      (background ? '_bg' : @high_priority ? '_high' : '')
     func = (prefix ? prefix + "\t" : '') + @func
-    Util::pack_request(mode, [func, get_uniq_hash, arg].join("\0"))
+    modes = ['submit_job']
+    
+    if @sched
+      modes << 'sched'
+      args = [func, get_uniq_hash, @sched, args].flatten
+    elsif @epoch
+      modes << 'epoch'
+      args = [func, get_uniq_hash, @epoch, args]
+    else
+      modes << 'high' if @high_priority
+      modes << 'bg' if background
+      args = [func, get_uniq_hash, arg]
+    end
+    
+    mode = modes.join('_')
+    Util::pack_request(mode, args.join("\0"))
   end
 end
 
