@@ -51,14 +51,14 @@ class Util
     33 => :submit_job_low,       # C->J: FUNC[0]UNIQ[0]ARGS
     34 => :submit_job_low_bg,    # C->J: FUNC[0]UNIQ[0]ARGS
     35 => :submit_job_sched,     # REQ    Client
-    36 => :submit_job_epoch      # REQ    Client
+    36 => :submit_job_epoch      # C->J: FUNC[0]UNIQ[0]EPOCH[0]ARGS
   }
 
   # Map e.g. 'can_do' => 1
   NUMS = COMMANDS.invert
 
   # Default job server port.
-  DEFAULT_PORT = 7003
+  DEFAULT_PORT = 4730
 
   def Util.logger=(logger)
     @logger = logger

@@ -30,8 +30,18 @@ class Task
     @retries_done = 0
     @hash = nil
   end
-  attr_accessor :uniq, :retry_count, :priority, :background
+
+  attr_accessor :uniq, :retry_count, :priority, :background, :epoch
   attr_reader :successful, :func, :arg, :retries_done
+
+  ##
+  # Schedule this job to run at a certain time (like `cron`)
+  # XXX: But there is no wildcard??
+  #
+  # @param time     Ruby Time object that represents when to run the thing
+  def schedule(time)
+    @scheduled_at = time
+  end
 
   ##
   # Internal method to reset this task's state so it can be run again.
@@ -169,20 +179,23 @@ class Task
   #
   # @return            String representation of packet
   def get_submit_packet()
-    mode = 'submit_job'
-    if(@priority)
-      if(@priority == :high)
-        mode += "_high"
-      elsif(@priority == :low)
-        mode += "_low"
+    modes = ['submit_job']
+    
+    if @scheduled_at
+      modes << 'epoch'
+      args = [func, get_uniq_hash, @scheduled_at.to_i, arg]
+    else
+      if @priority
+        modes << 'high' if @priority == :high
+        modes << 'low'  if @priority == :low
+      else
+        modes << 'bg' if @background
       end
+      args = [func, get_uniq_hash, arg]
     end
-
-    if(@background)
-      mode += "_bg"
-    end
-
-    Util::pack_request(mode, [func, get_uniq_hash, arg].join("\0"))
+    
+    mode = modes.join('_')
+    Util::pack_request(mode, args.join("\0"))
   end
 end
 
