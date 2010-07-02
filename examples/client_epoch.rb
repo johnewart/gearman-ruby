@@ -7,20 +7,13 @@ require '../lib/gearman'
 client = Gearman::Client.new('localhost')
 taskset = Gearman::TaskSet.new(client)
 
-# Get something to echo
-puts '[client] Type a string to reverse:'
-input = gets.chomp
-
-puts '[client] File to write to:'
-outfile = gets.chomp
-
-# Set scheduled time to 90 seconds from now
+data = rand(36**8).to_s(36)
+# Set scheduled time to some time in the future
 time = Time.now() + 30
 puts "Time as seconds: #{time.to_i}" 
-data = [input, outfile].join("\0")
-task = Gearman::Task.new("reverse_to_file", data)
+task = Gearman::Task.new("reverse_string", data)
 task.schedule(time)
 
 # Sending the task to the server
-puts "[client] Sending task: #{task.inspect}, to the 'reverse_to_file' worker"
+puts "[client] Sending task: #{task.inspect}, to the 'reverse_string' worker"
 taskset.add_task(task)

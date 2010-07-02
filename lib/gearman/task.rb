@@ -29,6 +29,10 @@ class Task
     @successful = false
     @retries_done = 0
     @hash = nil
+    
+    unless @uniq
+      @uniq = rand(36**8).to_s(36)
+    end
   end
 
   attr_accessor :uniq, :retry_count, :priority, :background, :epoch
