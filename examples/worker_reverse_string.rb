@@ -1,15 +1,27 @@
 require 'rubygems'
-#require 'gearman'
 require '../lib/gearman'
 
-servers = ['localhost:4730']
-w = Gearman::Worker.new(servers)
+# String reverse worker 
 
-# Add a handler for a "sleep" function that takes a single argument, the
-# number of seconds to sleep before reporting success.
-w.add_ability('reverse_string') do |data,job|
- puts "Data: #{data.inspect} Reverse: #{data.reverse}"
- # Report success.
- true
+servers = ['localhost:4730']
+
+t = nil
+jobnum = 0
+
+(0..1).each do 
+  t = Thread.new {
+    w = Gearman::Worker.new(servers)
+    w.add_ability('reverse_string') do |data,job|
+      result = data.reverse
+      puts "Job: #{job.inspect} Data: #{data.inspect} Reverse: #{result} "
+      puts "Completed job ##{jobnum}"
+      jobnum += 1
+      result
+    end
+    loop { w.work }
+  }
 end
-loop { w.work }
+
+puts "Waiting for threads..."
+t.join
+

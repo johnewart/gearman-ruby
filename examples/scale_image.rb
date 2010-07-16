@@ -4,8 +4,7 @@ $: << '../lib'
 require 'gearman'
 require 'optparse'
 
-Gearman::Util.debug = true
-servers = 'localhost:7003'
+servers = 'localhost:4730'
 format = 'PNG'
 width, height = 100, 100
 
