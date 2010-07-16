@@ -6,12 +6,12 @@ require 'rcov/rcovtask'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |s|
-    s.name = "xing-gearman-ruby"
+    s.name = "gearman-ruby"
     s.summary = "Library for the Gearman distributed job system"
-    s.email = "ladislav.martincik@xing.com"
-    s.homepage = "http://github.com/xing/gearman-ruby"
+    s.email = "john@unixninjas.org"
+    s.homepage = "http://github.com/johnewart/gearman-ruby"
     s.description = "Library for the Gearman distributed job system"
-    s.authors = ["Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
+    s.authors = ["John Ewart", "Colin Curtin", "Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
   end
 rescue LoadError
   puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
