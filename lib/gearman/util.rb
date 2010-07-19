@@ -93,7 +93,7 @@ class Util
   #              Task.new
   # @return      Task object
   def Util.get_task_from_args(*args)
-    if args[0].class == Task
+    if (args[0].class == Task || args[0].class.superclass == Task)
       return args[0]
     elsif args.size <= 3
       return Task.new(*args)
