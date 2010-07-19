@@ -297,9 +297,8 @@ class Worker
       Util.logger.debug "GearmanRuby: Sending work_fail for #{handle} to #{hostport}"
       [ Util.pack_request(:work_fail, handle) ]
     elsif exception
-      Util.logger.debug "GearmanRuby: Sending work_warning, work_fail for #{handle} to #{hostport}"
-      [ Util.pack_request(:work_warning, "#{handle}\0#{exception.message}"),
-        Util.pack_request(:work_fail, handle) ]
+      Util.logger.debug "GearmanRuby: Sending work_exception for #{handle} to #{hostport}"
+      [ Util.pack_request(:work_exception, "#{handle}\0#{exception.message}") ]
     end
 
     cmd.each {|p| Util.send_request(sock, p) }
