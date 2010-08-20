@@ -54,6 +54,7 @@ class Worker
     def run(data, job)
       @block.call(data, job)
     end
+  
   end
 
   # = Job
@@ -107,6 +108,7 @@ class Worker
     @client_id = Array.new(30) { chars[rand(chars.size)] }.join
     @sockets = {}  # "host:port" -> Socket
     @abilities = {}  # "funcname" -> Ability
+    @after_abilities = {} # "funcname" -> Ability
     @bad_servers = []  # "host:port"
     @servers_mutex = Mutex.new
     %w{client_id reconnect_sec
@@ -246,6 +248,24 @@ class Worker
     @sockets.values.each {|s| announce_ability(s, func, timeout) }
   end
 
+
+  ##
+  # Add an after-ability hook
+  #
+  # The passed-in block of code will be executed after the work block for 
+  # jobs with the same function name. It takes two arguments, the result of
+  # the work and the original job data. This way, if you need to hook into 
+  # *after* the job_complete packet is sent to the server, you can do so. 
+  #
+  # N.B The after-ability hook ONLY runs if the ability was successful and no 
+  # exceptions were raised.
+  #
+  # @param func     function name (without prefix)
+  #
+  def after_ability(func, &f)
+    @after_abilities[func] = Ability.new(f)
+  end
+  
   ##
   # Let job servers know that we're no longer able to do something.
   #
@@ -287,12 +307,10 @@ class Worker
       exception = e
     end
 
-
     cmd = if ret && exception.nil?
-      ret = ret.to_s
-      Util.logger.debug "GearmanRuby: Sending work_complete for #{handle} with #{ret.size} byte(s) " +
+      Util.logger.debug "GearmanRuby: Sending work_complete for #{handle} with #{ret.to_s.size} byte(s) " +
         "to #{hostport}"
-      [ Util.pack_request(:work_complete, "#{handle}\0#{ret}") ]
+      [ Util.pack_request(:work_complete, "#{handle}\0#{ret.to_s}") ]
     elsif exception.nil?
       Util.logger.debug "GearmanRuby: Sending work_fail for #{handle} to #{hostport}"
       [ Util.pack_request(:work_fail, handle) ]
@@ -302,6 +320,21 @@ class Worker
     end
 
     cmd.each {|p| Util.send_request(sock, p) }
+    
+    # There are cases where we might want to run something after the worker
+    # successfully completes the ability in question and sends its results
+    if ret && exception.nil?
+      after_ability = @after_abilities[func]
+      if after_ability
+        Util.logger.debug "Running after ability for #{func}..."
+        begin
+          after_ability.run(ret, data)
+        rescue Exception => e
+          nil
+        end
+      end
+    end 
+    
     true
   end
 
