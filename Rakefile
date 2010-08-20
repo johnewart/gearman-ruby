@@ -8,8 +8,8 @@ begin
   Jeweler::Tasks.new do |s|
     s.name = "gearman-ruby"
     s.summary = "Library for the Gearman distributed job system"
-    s.email = "john@unixninjas.org"
-    s.homepage = "http://github.com/johnewart/gearman-ruby"
+    s.email = "gearman.ruby@librelist.com"
+    s.homepage = "http://github.com/gearman-ruby/gearman-ruby"
     s.description = "Library for the Gearman distributed job system"
     s.authors = ["John Ewart", "Colin Curtin", "Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
   end
