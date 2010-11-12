@@ -305,6 +305,7 @@ class Worker
       ret = ability.run(data, Job.new(sock, handle))
     rescue Exception => e
       exception = e
+      Util.logger.debug "GearmanRuby: Exception: #{e}\n#{e.backtrace.join("\n")}\n"
     end
 
     cmd = if ret && exception.nil?
@@ -330,6 +331,7 @@ class Worker
         begin
           after_ability.run(ret, data)
         rescue Exception => e
+          Util.logger.debug "GearmanRuby: Exception: #{e}\n#{e.backtrace.join("\n")}\n"
           nil
         end
       end
