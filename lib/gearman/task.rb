@@ -176,7 +176,7 @@ module Gearman
       return @hash if @hash
     
       if @uniq.nil? 
-        string = (@func+@arg).split(//).sort.join
+        string = (@func+@arg).to_s
       else 
         string = @uniq
       end
@@ -198,9 +198,10 @@ module Gearman
         if @priority
           modes << 'high' if @priority == :high
           modes << 'low'  if @priority == :low
-        else
-          modes << 'bg' if @background
         end
+
+        modes << 'bg' if @background
+
         args = [func, get_uniq_hash, arg]
       end
     
