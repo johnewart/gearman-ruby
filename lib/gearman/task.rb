@@ -176,7 +176,7 @@ module Gearman
       return @hash if @hash
     
       if @uniq.nil? 
-        string = (@func+@arg).to_s
+        string = @func+@arg.to_s
       else 
         string = @uniq
       end
