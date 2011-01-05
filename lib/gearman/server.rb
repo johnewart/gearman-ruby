@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'socket'
-require 'gearman'
 
 module Gearman
 
