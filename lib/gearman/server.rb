@@ -60,7 +60,7 @@ class Server
     status = {}
     if response = send_command('status')
       response.split("\n").each do |line|
-        if line.match /^([A-Za-z_]+)\t([A-Za-z_]+)\t(\d+)\t(\d+)\t(\d+)$/
+        if line.match /^(.*)?\t(\d+)\t(\d+)\t(\d+)$/
           (status[$1] ||= {})[$2] = { :queue => $3, :active => $4, :workers => $5 }
         end
       end
