@@ -102,6 +102,7 @@ class TaskSet
     else
       (@tasks_in_progress[js_handle] ||= []) << task
     end
+    task.handle_created(data)
     nil
   end
   private :handle_job_created
