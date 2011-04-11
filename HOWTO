@@ -13,6 +13,9 @@ is the nervous system for how distributed processing communicates."
 == Setting up a basic environment
 
 A very basic German environment will look like this:
+![A very basic German environment](http://i.imgur.com/ooCab.jpg "A very basic German environment")
+
+A very basic _Gearman_ environment will look like this:
 
                        ----------  
                        | Client |  
