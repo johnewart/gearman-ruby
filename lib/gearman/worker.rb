@@ -67,6 +67,7 @@ class Worker
     #
     # @param sock    Socket connected to job server
     # @param handle  job server-supplied job handle
+    attr_reader :handle
     def initialize(sock, handle)
       @socket = sock
       @handle = handle
