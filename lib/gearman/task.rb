@@ -120,6 +120,15 @@ module Gearman
       @on_complete.call(data) if @on_complete
       self
     end
+    
+    def on_created(&f)
+      @on_created = f
+    end
+      
+    def handle_created(data)
+      @on_created.call(data) if @on_created
+      self
+    end
 
     ##
     # Record a failure and check whether we should be retried.
