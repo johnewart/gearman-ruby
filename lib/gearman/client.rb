@@ -142,7 +142,7 @@ class Client
 
     taskset = TaskSet.new(self)
     taskset.add_task(task)
-    taskset.wait
+    taskset.wait(nil)
 
     failed ? nil : result
   end
