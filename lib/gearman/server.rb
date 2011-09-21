@@ -48,7 +48,7 @@ class Server
     while true do 
       if buf = socket.recv_nonblock(65536) rescue nil
         response << buf 
-        return response if response =~ /\n.\n$/
+        return response if response =~ /.\n$/
       end
     end
   end
