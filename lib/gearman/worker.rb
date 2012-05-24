@@ -173,7 +173,7 @@ class Worker
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
       if not servers.include? server
-        Util.logger.debug "GearmanRuby: Disconnecting from old server #{server}"
+        Util.logger.info "GearmanRuby: Disconnecting from old server #{server}"
         sock.close
         @sockets.delete(server)
       end
@@ -182,11 +182,11 @@ class Worker
     servers.each do |server|
       if not @sockets[server]
         begin
-          Util.logger.debug "GearmanRuby: Connecting to server #{server}"
+          Util.logger.info "GearmanRuby: Connecting to server #{server}"
           @sockets[server] = connect(server)
         rescue NetworkError
           @bad_servers << server
-          Util.logger.debug "GearmanRuby: Unable to connect to #{server}"
+          Util.logger.info "GearmanRuby: Unable to connect to #{server}"
         end
       end
     end
@@ -375,7 +375,7 @@ class Worker
               Util.logger.debug "GearmanRuby: Got #{type.to_s} from #{hostport}"
             end
           rescue Exception
-            Util.logger.debug "GearmanRuby: Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
+            Util.logger.info "GearmanRuby: Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
             bad_servers << hostport
             break
           end
