@@ -99,6 +99,42 @@ class Worker
     end
   end
 
+  module Callbacks
+
+    %w(connect grab_job no_job job_assign work_complete work_fail
+       work_exception).each do |event|
+
+      define_method("on_#{event}") do |&callback|
+        instance_variable_set("@__on_#{event}", callback)
+      end
+
+      define_method("run_#{event}_callback") do
+        callback = instance_variable_get("@__on_#{event}")
+        return unless callback
+
+        begin
+          callback.call
+        rescue Exception => e
+          Util.logger.error "GearmanRuby: #{event} failed: #{e.inspect}"
+        end
+      end
+    end
+
+  end
+
+  # Provides callbacks for internal worker use:
+  #
+  # def named_metric(metric)
+  #   "HardWorker.#{Process.pid}.#{metric}"
+  # end
+  #
+  # worker = Gearman::Worker.new
+  # worker.on_grab_job { StatsD.increment(named_metric('grab_job')) }
+  # worker.on_job_assign { StatsD.increment(named_metric('job_assign')) }
+  # worker.on_no_job { StatsD.increment(named_metric('no_job')) }
+  # worker.on_work_complete { StatsD.increment(named_metric('work_complete')) }
+  include Callbacks
+
   ##
   # Create a new worker.
   #
@@ -173,7 +209,7 @@ class Worker
     # Disconnect from servers that we no longer care about.
     @sockets.each do |server,sock|
       if not servers.include? server
-        Util.logger.debug "GearmanRuby: Disconnecting from old server #{server}"
+        Util.logger.info "GearmanRuby: Disconnecting from old server #{server}"
         sock.close
         @sockets.delete(server)
       end
@@ -182,11 +218,12 @@ class Worker
     servers.each do |server|
       if not @sockets[server]
         begin
-          Util.logger.debug "GearmanRuby: Connecting to server #{server}"
+          Util.logger.info "GearmanRuby: Connecting to server #{server}"
+          run_connect_callback
           @sockets[server] = connect(server)
         rescue NetworkError
           @bad_servers << server
-          Util.logger.debug "GearmanRuby: Unable to connect to #{server}"
+          Util.logger.info "GearmanRuby: Unable to connect to #{server}"
         end
       end
     end
@@ -312,12 +349,15 @@ class Worker
     cmd = if ret && exception.nil?
       Util.logger.debug "GearmanRuby: Sending work_complete for #{handle} with #{ret.to_s.size} byte(s) " +
         "to #{hostport}"
+      run_work_complete_callback
       [ Util.pack_request(:work_complete, "#{handle}\0#{ret.to_s}") ]
     elsif exception.nil?
       Util.logger.debug "GearmanRuby: Sending work_fail for #{handle} to #{hostport}"
+      run_work_fail_callback
       [ Util.pack_request(:work_fail, handle) ]
     elsif exception
       Util.logger.debug "GearmanRuby: Sending work_exception for #{handle} to #{hostport}"
+      run_work_exception_callback
       [ Util.pack_request(:work_exception, "#{handle}\0#{exception.message}") ]
     end
 
@@ -356,6 +396,7 @@ class Worker
       @servers_mutex.synchronize { servers = @sockets.keys.sort }
       servers.each do |hostport|
         Util.logger.debug "GearmanRuby: Sending grab_job to #{hostport}"
+        run_grab_job_callback
         sock = @sockets[hostport]
         Util.send_request(sock, req)
 
@@ -368,16 +409,18 @@ class Worker
             case type
             when :no_job
               Util.logger.debug "GearmanRuby: Got no_job from #{hostport}"
+              run_no_job_callback
               break
             when :job_assign
               @status = :working
+              run_job_assign_callback
               return worker_enabled if handle_job_assign(data, sock, hostport)
               break
             else
               Util.logger.debug "GearmanRuby: Got #{type.to_s} from #{hostport}"
             end
           rescue Exception
-            Util.logger.debug "GearmanRuby: Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
+            Util.logger.info "GearmanRuby: Server #{hostport} timed out or lost connection (#{$!.inspect}); marking bad"
             bad_servers << hostport
             break
           end
