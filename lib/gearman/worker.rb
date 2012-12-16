@@ -345,6 +345,8 @@ class Worker
   # Do a single job and return.
   def work
     req = Util.pack_request(:grab_job)
+    type = nil
+    data = nil
     loop do
       @status = :preparing
       bad_servers = []
@@ -400,10 +402,29 @@ class Worker
       return false unless worker_enabled
       @status = :waiting
 
-      # FIXME: We could optimize things the next time through the 'each' by
-      # sending the first grab_job to one of the servers that had a socket
-      # with data in it.  Not bothering with it for now.
-      IO::select(@sockets.values, nil, nil, @reconnect_sec)
+      sleepTime = Time.now
+      while(@status == :waiting)
+        # FIXME: We could optimize things the next time through the 'each' by
+        # sending the first grab_job to one of the servers that had a socket
+        # with data in it.  Not bothering with it for now.
+        IO::select(@sockets.values, nil, nil, @reconnect_sec)
+        
+        # If 30 seconds have passed, then wakeup
+        @status = :wakeup if Time.now - sleepTime > 30 
+
+        if(@status == :waiting)
+          @sockets.values.each do |sock|
+            type, data = Util.read_response(sock, @network_timeout_sec)
+ 
+            # there shouldn't be anything else here, if there is, we should be able to ignore it...
+            if(type == :noop)
+              Util.logger.debug "Received NoOp while sleeping... waking up!"
+              @status = :wakeup
+            end
+          end
+        end
+      end
+      
     end
   end
 end
