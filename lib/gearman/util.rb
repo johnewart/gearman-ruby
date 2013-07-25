@@ -116,7 +116,11 @@ class Util
     while data.size < len and (not timeout or Time.now.to_f < end_time) do
       IO::select([sock], nil, nil, timeout ? end_time - Time.now.to_f : nil) \
         or break
-      data += sock.readpartial(len - data.size)
+      begin
+        data += sock.readpartial(len - data.size)
+      rescue
+        raise NetworkError, "Unable to read data from socket."
+      end
     end
     if data.size < len
       raise NetworkError, "Read #{data.size} byte(s) instead of #{len}"
@@ -131,7 +135,6 @@ class Util
   # @param timeout  timeout in seconds, nil for no timeout
   # @return         array consisting of integer packet type and data
   def Util.read_response(sock, timeout=nil)
-    #debugger
     end_time = Time.now.to_f + timeout if timeout
     head = timed_recv(sock, 12, timeout)
     magic, type, len = head.unpack('a4NN')
@@ -184,7 +187,7 @@ class Util
   # @return     [hostport, handle]
   def Util.str_to_handle(str)
     str =~ %r{^([^:]+:\d+)//(.+)}
-    return [$1, $3]
+    return [$1, $2]
   end
 
   def self.with_safe_socket_op

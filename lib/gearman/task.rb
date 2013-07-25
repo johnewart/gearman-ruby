@@ -38,8 +38,7 @@ module Gearman
     attr_reader :successful, :func, :arg, :retries_done
 
     ##
-    # Schedule this job to run at a certain time (like `cron`)
-    # XXX: But there is no wildcard??
+    # Schedule this job to run at a certain time
     #
     # @param time     Ruby Time object that represents when to run the thing
     def schedule(time)

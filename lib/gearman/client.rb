@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-
 require 'socket'
 
 module Gearman
@@ -18,13 +16,12 @@ class Client
     self.job_servers = job_servers if job_servers
     @sockets = {}  # "host:port" -> [sock1, sock2, ...]
     @socket_to_hostport = {}  # sock -> "host:port"
-    @test_hostport = nil  # make get_job_server return a given host for testing
     @task_create_timeout_sec = 10
     @server_counter = -1
     @bad_servers = []
   end
   attr_reader :job_servers, :bad_servers
-  attr_accessor :test_hostport, :task_create_timeout_sec
+  attr_accessor :task_create_timeout_sec
 
   ##
   # Set the options
@@ -54,18 +51,37 @@ class Client
   #
   # @return  "host:port"
   def get_job_server
+    if @job_servers.empty? && !@bad_servers.empty?
+      Util.logger.debug "GearmanRuby: No more good job servers, trying bad ones: #{@bad_servers.inspect}."
+      # Try to reconnect to the bad servers
+      @bad_servers.each do |bad_server|
+        Util.logger.debug "GearmanRuby: Trying server: #{bad_server.inspect}"
+        begin
+          request = Util.pack_request("echo_req", "ping")
+          sock = self.get_socket(bad_server)
+          Util.send_request(sock, request)
+          response = Util.read_response(sock, 20)
+          if response[0] == :echo_res
+            @job_servers << bad_server
+            @bad_servers.delete bad_server
+          end
+        rescue NetworkError
+          Util.logger.debug "GearmanRuby: Error trying server: #{bad_server.inspect}"
+        end
+      end
+    end
 
-    raise Exception.new('No servers available') if @job_servers.empty?
-
+    Util.logger.debug "GearmanRuby: job servers: #{@job_servers.inspect}"
+    raise NoJobServersError if @job_servers.empty?
     @server_counter += 1
-    # Return a specific server if one's been set.
-    @test_hostport or @job_servers[@server_counter % @job_servers.size]
+    @job_servers[@server_counter % @job_servers.size]
   end
-  
+
   def signal_bad_server(hostport)
     @job_servers = @job_servers.reject { |s| s == hostport }
     @bad_servers << hostport
   end
+
   ##
   # Get a socket for a job server.
   #
@@ -83,15 +99,14 @@ class Client
       begin
         sock = TCPSocket.new(*hostport.split(':'))
       rescue Exception
+        # Swallow error so we can retry -> num_retries times
       else
-
+        # No error, stash socket mapping and return it
         @socket_to_hostport[sock] = hostport
         return sock
       end
     end
-
-    signal_bad_server(hostport)
-    raise RuntimeError, "Unable to connect to job server #{hostport}"
+    raise NetworkError, "Unable to connect to job server #{hostport}"
   end
 
   ##
@@ -103,9 +118,8 @@ class Client
   def return_socket(sock)
     hostport = get_hostport_for_socket(sock)
     if not hostport
-      inet, port, host, ip = s.addr
-      Util.logger.error "GearmanRuby: Got socket for #{ip}:#{port}, which we don't " +
-        "know about -- closing"
+      inet, port, host, ip = sock.addr
+      Util.logger.error "GearmanRuby: Got socket for #{ip}:#{port}, which we don't know about -- closing"
       sock.close
       return
     end
@@ -141,8 +155,11 @@ class Client
     task.on_fail { failed = true }
 
     taskset = TaskSet.new(self)
-    taskset.add_task(task)
-    taskset.wait(nil)
+    if taskset.add_task(task)
+      taskset.wait
+    else
+      raise JobQueueError, "Unable to enqueue job."
+    end
 
     failed ? nil : result
   end

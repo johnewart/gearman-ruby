@@ -43,44 +43,47 @@ class TaskSet
     req = task.get_submit_packet()
 
     @task_waiting_for_handle = task
-    # FIXME: We need to loop here in case we get a bad job server, or the
-    # job creation fails (see how the server reports this to us), or ...
 
+    # Target the same job manager when submitting jobs
+    # with the same unique id so that we can coalesce
     merge_hash = task.get_uniq_hash
 
-    looking_for_socket = true
-
-    should_try_rehash = true
-    while(looking_for_socket)
+    while (@task_waiting_for_handle != nil)
       begin
-        hostport = if should_try_rehash
-          (@merge_hash_to_hostport[merge_hash] or @client.get_job_server)
-        else
-          @client.get_job_server
-        end
+        # Try to connect again to the same server based on the unique hash
+        @merge_hash_to_hostport[merge_hash] ||= @client.get_job_server
+        hostport = @merge_hash_to_hostport[merge_hash]
 
-        @merge_hash_to_hostport[merge_hash] = hostport if merge_hash
-        sock = (@sockets[hostport] or @client.get_socket(hostport))
-        looking_for_socket = false
-      rescue RuntimeError
-        should_try_rehash = false
-      end
-    end
-    Util.logger.debug "GearmanRuby: Using socket #{sock.inspect} for #{hostport}"
-    Util.send_request(sock, req)
-    while @task_waiting_for_handle
-      begin
+        # Cache the socket
+        @sockets[hostport] ||= @client.get_socket(hostport)
+
+        # Submit job to server
+        sock = @sockets[hostport]
+        Util.logger.debug "GearmanRuby: Using socket #{sock.inspect} for #{hostport} to SUBMIT_JOB"
+        Util.send_request(sock, req)
+
+        # read_packet will fire off handle_job_created and set @task_waiting_for_handle to nil
+        # TODO: Better way of doing this.
         read_packet(sock, @client.task_create_timeout_sec)
       rescue NetworkError
-        Util.logger.debug "GearmanRuby: Got timeout on read from #{hostport}"
-        @task_waiting_for_handle = nil
-        @client.close_socket(sock)
+        Util.logger.debug "GearmanRuby: Network error on read from #{hostport} while adding job, marking server bad"
+        # Tell the client this is a bad server
+        @client.signal_bad_server(hostport)
+        if(sock != nil)
+          @client.close_socket(sock)
+        end
+
+        # Un-cache socket
+        @sockets.delete hostport
+        # Remove from hash -> hostport mapping
+        @merge_hash_to_hostport[merge_hash] = nil
+      rescue NoJobServersError
+        Util.logger.error "GearmanRuby: No servers available."
         return false
       end
     end
 
-    @sockets[hostport] ||= sock
-    true
+    return true
   end
   private :add_task_internal
 
@@ -91,9 +94,11 @@ class TaskSet
   # @param data      data returned in packet from server
   def handle_job_created(hostport, data)
     Util.logger.debug "GearmanRuby: Got job_created with handle #{data} from #{hostport}"
+
     if not @task_waiting_for_handle
-      raise ProtocolError, "Got unexpected job_created notification " + "with handle #{data} from #{hostport}"
+      raise ProtocolError, "Got unexpected job_created notification with handle #{data} from #{hostport}"
     end
+
     js_handle = Util.handle_to_str(hostport, data)
     task = @task_waiting_for_handle
     @task_waiting_for_handle = nil
@@ -249,15 +254,16 @@ class TaskSet
         @sockets = {}
         return false
       end
+
       ready_socks[0].each do |sock|
         begin
-          read_packet(sock, (end_time ? end_time - Time.now.to_f : nil))
+           read_packet(sock, (end_time ? end_time - Time.now.to_f : nil))
         rescue ProtocolError
           hostport = @client.get_hostport_for_socket(sock)
           Util.logger.debug "GearmanRuby: Ignoring bad packet from #{hostport}"
         rescue NetworkError
           hostport = @client.get_hostport_for_socket(sock)
-          Util.logger.debug "GearmanRuby: Got timeout on read from #{hostport}"
+          Util.logger.debug "GearmanRuby: Network error on read from #{hostport}"
         end
       end
     end
@@ -266,7 +272,7 @@ class TaskSet
     @sockets = {}
     @finished_tasks.each do |t|
       if ( (t.background.nil? || t.background == false) && !t.successful)
-        Util.logger.debug "GearmanRuby: Taskset failed"
+        Util.logger.debug "GearmanRuby: TaskSet failed"
         return false
       end
     end
