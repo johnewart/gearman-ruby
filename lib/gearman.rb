@@ -73,4 +73,10 @@ end
 class NetworkError < Exception
 end
 
+class NoJobServersError < Exception
+end
+
+class JobQueueError < Exception
+end
+
 end

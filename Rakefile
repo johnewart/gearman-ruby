@@ -1,40 +1,19 @@
-require 'rake'
-require 'rake/testtask'
-require 'rake/rdoctask'
-require 'rcov/rcovtask'
- 
+require 'rubygems'
+require 'bundler'
+require "rspec/core/rake_task"
+Bundler::GemHelper.install_tasks
+
 begin
-  require 'jeweler'
-  Jeweler::Tasks.new do |s|
-    s.name = "gearman-ruby"
-    s.summary = "Library for the Gearman distributed job system"
-    s.email = "gearman.ruby@librelist.com"
-    s.homepage = "http://github.com/gearman-ruby/gearman-ruby"
-    s.description = "Library for the Gearman distributed job system"
-    s.authors = ["John Ewart", "Colin Curtin", "Daniel Erat", "Ladislav Martincik", "Pablo Delgado", "Mauro Pompilio", "Antonio Garrote", "Kim Altintop"]
-  end
-rescue LoadError
-  puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
+  Bundler.setup(:default, :development)
+rescue Bundler::BundlerError => e
+  $stderr.puts e.message
+  $stderr.puts "Run `bundle install` to install missing gems"
+  exit e.status_code
 end
 
-Rake::TestTask.new do |t|
-  t.libs << 'lib'
-  t.pattern = 'test/**/*_test.rb'
-  t.verbose = false
+RSpec::Core::RakeTask.new do |t|
+  t.rspec_opts = ["-c", "-f progress", "-r ./spec/spec_helper.rb"]
+  t.pattern = 'spec/**/*_spec.rb'
 end
 
-Rake::RDocTask.new do |rdoc|
-  rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = 'Gearman Ruby'
-  rdoc.options << '--line-numbers' << '--inline-source'
-  rdoc.rdoc_files.include('README*')
-  rdoc.rdoc_files.include('lib/**/*.rb')
-end
-
-Rcov::RcovTask.new do |t|
-  t.libs << "test"
-  t.test_files = FileList['test/*_test.rb']
-  t.verbose = true
-end
-
-task :default => :rcov
+task :default => :spec
