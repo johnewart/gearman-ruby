@@ -156,7 +156,7 @@ class Client
 
     taskset = TaskSet.new(self)
     if taskset.add_task(task)
-      taskset.wait
+      taskset.wait(nil)
     else
       raise JobQueueError, "Unable to enqueue job."
     end
