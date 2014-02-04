@@ -63,6 +63,7 @@ require File.dirname(__FILE__) + '/gearman/task'
 require File.dirname(__FILE__) + '/gearman/taskset'
 require File.dirname(__FILE__) + '/gearman/util'
 require File.dirname(__FILE__) + '/gearman/worker'
+require File.dirname(__FILE__) + '/gearman/server'
 
 class InvalidArgsError < Exception
 end
