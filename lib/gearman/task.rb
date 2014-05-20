@@ -21,7 +21,7 @@ module Gearman
       @arg = arg or ''  # TODO: use something more ref-like?
       @uniq = nil       # Initialize to nil
       %w{on_complete on_fail on_retry on_exception on_status on_warning on_data
-         uniq retry_count priority hash background}.map {|s| s.to_sym }.each do |k|
+         uniq retry_count priority hash background schedule_at}.map {|s| s.to_sym }.each do |k|
         instance_variable_set "@#{k}", opts[k]
         opts.delete k
       end
@@ -31,7 +31,6 @@ module Gearman
       @retry_count ||= 0
       @successful = false
       @retries_done = 0
-    
     end
 
     attr_accessor :uniq, :retry_count, :priority, :background, :epoch
@@ -42,7 +41,7 @@ module Gearman
     #
     # @param time     Ruby Time object that represents when to run the thing
     def schedule(time)
-      @scheduled_at = time
+      @schedule_at = time
     end
 
     ##
@@ -119,11 +118,11 @@ module Gearman
       @on_complete.call(data) if @on_complete
       self
     end
-    
+
     def on_created(&f)
       @on_created = f
     end
-      
+
     def handle_created(data)
       @on_created.call(data) if @on_created
       self
@@ -182,13 +181,13 @@ module Gearman
     #
     def get_uniq_hash
       return @hash if @hash
-    
-      if @uniq.nil? 
+
+      if @uniq.nil?
         string = @func+@arg.to_s
-      else 
+      else
         string = @uniq
       end
-    
+
       @hash = Digest::SHA1.hexdigest(string)
     end
 
@@ -198,10 +197,10 @@ module Gearman
     # @return            String representation of packet
     def get_submit_packet()
       modes = ['submit_job']
-    
-      if @scheduled_at
+
+      if @schedule_at
         modes << 'epoch'
-        args = [func, get_uniq_hash, @scheduled_at.to_i, arg]
+        args = [func, get_uniq_hash, @schedule_at.to_i, arg]
       else
         if @priority
           modes << 'high' if @priority == :high
@@ -212,12 +211,12 @@ module Gearman
 
         args = [func, get_uniq_hash, arg]
       end
-    
+
       mode = modes.join('_')
       Util::pack_request(mode, args.join("\0"))
     end
   end
-  
+
   class BackgroundTask < Task
     def initialize(*args)
       super
