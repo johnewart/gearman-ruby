@@ -62,7 +62,7 @@ class Server
     if response = send_command('status')
       response.split("\n").each do |line|
         if line.match /^(.*)?\t(\d+)\t(\d+)\t(\d+)$/
-          (status[$1] ||= {})[$2] = { :queue => $3, :active => $4, :workers => $5 }
+          status[$1] = { :queue => $2, :active => $3, :workers => $4 }
         end
       end
     end
