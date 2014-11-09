@@ -50,6 +50,7 @@ For the JobServer we recommend to use the offical Perl version, to install it:
 
  * Mac OS X: sudo port install p5-gearman-server
  * Debian/Ubuntu: sudo apt-get install gearman-server
+ * ArchLinux: sudo pacman -S gearmand
 
 To get the Ruby libraries by Xing:
 
