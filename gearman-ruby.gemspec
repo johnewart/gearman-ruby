@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.summary       = %q{Ruby Gearman library}
   s.description   = %q{Library for the Gearman distributed job system}
   s.email         = %q{john@johnewart.net}
-  s.homepage      = %q{http://github.com/gearman-ruby/gearman-ruby}
+  s.homepage      = %q{http://github.com/johnewart/gearman-ruby}
   s.rubyforge_project = "gearman-ruby"
 
   s.extra_rdoc_files = [
