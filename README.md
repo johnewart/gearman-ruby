@@ -1,5 +1,7 @@
 # gearman-ruby
 
+![Travis CI Build Status](https://travis-ci.org/johnewart/gearman-ruby.svg)
+
 ## What is this?
 
 This is a pure-Ruby library for the [gearman][Gearman] distributed job system.
