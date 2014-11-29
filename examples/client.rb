@@ -1,7 +1,6 @@
+$LOAD_PATH.unshift("../lib")
 require 'rubygems'
-#require 'gearman'
 require '../lib/gearman'
-# Gearman::Util.debug = true
 
 servers = ['localhost:4730', 'localhost:4731']
   

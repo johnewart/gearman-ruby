@@ -1,3 +1,3 @@
 module Gearman
-  VERSION = "3.0.7"
+  VERSION = "4.0.0"
 end

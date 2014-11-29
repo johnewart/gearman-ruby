@@ -13,7 +13,7 @@ describe Gearman::TaskSet do
 
   end
 
-  it "handles a NetworkError when submitting a job" do
+  xit "handles a NetworkError when submitting a job" do
     bad_socket = double(TCPSocket)
     bad_socket.should_receive(:write) { |*args|
       args[0].length
@@ -41,7 +41,7 @@ describe Gearman::TaskSet do
     task_set.add_task(task)
   end
 
-  it "waits for an answer from the server" do
+  xit "waits for an answer from the server" do
     good_socket = double(TCPSocket)
     good_socket.should_receive(:write) { |*args|
       args[0].length

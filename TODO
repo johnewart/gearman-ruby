@@ -1,8 +1,0 @@
-- Failover strategies
-  - Client:
-     * If connected for the first time, try to connect to at least one server from the server array
-     * If already connected to a server, and it goes down, the client should go down as well
-  - Worker:
-     * If connected for the first time, try to connect to as many servers as it can. 
-       Loop trough the bad servers, trying to reconnect to them as well.
-     * If a already connected to a server, and it goes down, wait and try to reconnect again.      

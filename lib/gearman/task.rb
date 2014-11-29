@@ -213,7 +213,7 @@ module Gearman
       end
 
       mode = modes.join('_')
-      Util::pack_request(mode, args.join("\0"))
+      Packet::pack_request(mode, args.join("\0"))
     end
   end
 
