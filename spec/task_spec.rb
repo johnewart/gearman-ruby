@@ -16,6 +16,16 @@ describe Gearman::Task do
       }.to raise_error
     end
 
+    it "should generate a task from two arguments" do
+      task = Gearman::Task.new("queue", "data")
+      task.should_not be nil
+    end
+
+    it "should generate a task from three arguments" do
+      task = Gearman::Task.new("queue", "data", {:background => true})
+      task.should_not be nil
+    end
+
     it "generates a uniq value based on the data and the function" do
       hash_data = 'bc2ca93d86a28cb72fedf36326d1da0cc3d4ed6a'
       task_one = Gearman::Task.new("unique_id", "abcdef")

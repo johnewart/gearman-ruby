@@ -1,17 +1,20 @@
 require 'spec_helper'
 require 'socket'
-require 'rspec'
-require 'rspec/mocks'
-require 'gearman'
 
 describe Gearman::Client do
   before(:all) do
     @tcp_server = TCPServer.new 5789
-    @client = Gearman::Client.new(["localhost:5789"])
   end
 
   after(:all) do
     @tcp_server.close
+  end
+
+  before(:each) do
+    @mock_connection_pool = double(Gearman::ConnectionPool)
+    Gearman::ConnectionPool.stub(:new).and_return @mock_connection_pool
+
+    @client = Gearman::Client.new(["localhost:5789"])
   end
 
   it "creates a client" do
@@ -30,31 +33,40 @@ describe Gearman::Client do
 
   it "raises an exception when submitting a job fails" do
     task = Gearman::Task.new("queue", "data")
-    @client.should_receive(:get_job_server).and_raise Gearman::NoJobServersError
+    @mock_connection_pool.should_receive(:get_connection).and_raise Gearman::NoJobServersError
     expect {
       @client.do_task(task)
-    }.to raise_error
-  end
-
-  it "gets a socket for the client's host:port combo" do
-    sock = @client.get_socket("localhost:5789")
-    sock.should_not be nil
-  end
-
-  it "closes sockets it doesn't know about when asked to return them" do
-    sock = double(TCPSocket)
-    sock.should_receive(:addr).and_return [nil, 1234, 'hostname', '1.2.3.4']
-    sock.should_receive(:close)
-    @client.return_socket(sock)
+    }.to raise_exception
   end
 
   it "properly emits an options request" do
-    Gearman::Util.should_receive(:send_request)
-    Gearman::Util.should_receive(:read_response).and_return([:error, "Snarf"])
+    mock_connection = double(Gearman::Connection)
+    mock_connection.should_receive(:send_request).and_return([:error, "Snarf"])
+
+    @mock_connection_pool.should_receive(:with_all_connections).and_yield mock_connection
+
     expect {
-      @client.option_request("exceptions")
+      @client.set_options("exceptions")
     }.to raise_error
 
   end
+
+
+
+  it "should raise a NetworkError when it didn't write as much as expected to a socket" do
+    socket = double(TCPSocket)
+    socket.should_receive(:write).with(anything).and_return(0)
+
+    task = Gearman::Task.new("job_queue", "data")
+    request = task.get_submit_packet
+    connection = Gearman::Connection.new("localhost", 1234)
+    connection.should_receive(:socket).and_return socket
+
+    expect {
+      connection.send_request(request)
+    }.to raise_error
+  end
+
+
 
 end
