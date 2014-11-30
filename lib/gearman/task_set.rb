@@ -22,7 +22,7 @@ module Gearman
     ##
     # Wait for all tasks in the set to finish.
     #
-    # @param timeout  maximum amount of time to wait, in seconds
+    # @param timeout  maximum amount of time to wait, in seconds - if this is nil, waits forever
     def wait(timeout = 1)
       end_time = if timeout
         Time.now.to_f + timeout
@@ -55,6 +55,11 @@ module Gearman
         end
       end
       true
+    end
+
+    # Wait for all tasks in set to finish, with no timeout
+    def wait_forever
+	wait(nil)
     end
 
   end

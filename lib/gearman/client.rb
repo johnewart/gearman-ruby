@@ -45,7 +45,7 @@ module Gearman
 
       task_set = TaskSet.new(self)
       if task_set.add_task(task)
-        task_set.wait
+        task_set.wait_forever
       else
         raise JobQueueError, "Unable to enqueue job."
       end
