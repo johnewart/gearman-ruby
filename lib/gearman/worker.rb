@@ -21,7 +21,7 @@ module Gearman
       @abilities            = {}
       @client_id            = opts[:client_id] || generate_id
       @connection_pool      = ConnectionPool.new(job_servers)
-      @network_timeout_sec  = opts[:network_timeout_sec] || 5
+      @network_timeout_sec  = opts[:network_timeout_sec] || 10
       @reconnect_sec        = opts[:reconnect_sec] || 30
       @status               = :preparing
       @worker_enabled       = true
@@ -165,11 +165,11 @@ module Gearman
           @status = :working
           run_job_assign_callback
           return worker_enabled if handle_job_assign(data, connection)
-        when :no_op
+        when :noop
           # We'll have to read again
           logger.debug "Received NOOP while polling. Ignoring NOOP"
         else
-          logger.error "Got unhandled #{type.to_s} from #{connection}"
+          logger.error "Got unexpected #{type.to_s} from #{connection}"
       end
     end
 
@@ -181,15 +181,16 @@ module Gearman
 
       loop do
         @status = :preparing
+  
         @connection_pool.with_all_connections do |connection|
-          logger.debug "Sending GRAB_JOB to #{connection}"
-          run_grab_job_callback
-
           begin
+            logger.debug "Sending GRAB_JOB to #{connection}"
+            run_grab_job_callback
             type, data = connection.send_request(grab_job_req, @network_timeout_sec)
             handle_work_message(type, data, connection)
-          end while type == :no_op
+          end while type == :job_assign
         end
+  
 
         logger.info "Sending PRE_SLEEP and going to sleep for #{@reconnect_sec} second(s)"
         @connection_pool.with_all_connections do |connection|
@@ -212,13 +213,18 @@ module Gearman
     # Sleep and poll until timeout occurs or a NO_OP packet is received
     # @param time_fell_asleep The time that we fell asleep (Time object)
     def sleep(time_fell_asleep)
-      # Use IO::select to wait for available connection data
-      @connection_pool.poll_connections(@network_timeout_sec)
+      max_timeout = 30 - (Time.now - time_fell_asleep).to_i
+
+      if max_timeout > 0
+        # Use IO::select to wait for available connection data
+        @connection_pool.poll_connections(max_timeout)
+      end
 
       # If 30 seconds have passed, then wakeup
-      time_asleep = Time.now - time_fell_asleep
-      @status = :wakeup if time_asleep > 30
-
+      time_asleep = (Time.now - time_fell_asleep).to_f
+      @status = :wakeup if time_asleep >= 30
+  
+      # We didn't sleep for >= 30s, so we need to check for a NOOP
       if (@status == :waiting)
         @connection_pool.with_all_connections do |connection|
           begin
