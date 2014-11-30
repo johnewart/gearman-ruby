@@ -23,8 +23,6 @@ module Gearman
       @servers_mutex.synchronize do
         if connection.is_healthy?
           activate_connection(connection)
-
-          @connection_handler.call(connection) if @connection_handler
         else
           deactivate_connection(connection)
         end
@@ -64,10 +62,14 @@ module Gearman
     end
 
     def poll_connections(timeout = nil)
+      available_sockets = []
       @servers_mutex.synchronize do
-        sockets = @job_servers.collect { |conn| conn.socket }
+        available_sockets.concat @job_servers.collect { |conn| conn.socket }
       end
-      IO::select(sockets, nil, nil, timeout)
+      if available_sockets.size > 0
+      	logger.debug "Polling on #{available_sockets.size} available server(s) with a #{timeout} second timeout"
+      	IO::select(available_sockets, nil, nil, timeout)
+      end
     end
 
     def with_all_connections(&block)
@@ -77,7 +79,7 @@ module Gearman
             block.call(connection)
           rescue NetworkError => ex
             logger.debug "Error with #{connection}, marking as bad"
-            remove_connection(connection)
+            deactivate_connection(connection)
           end
         end
       end
@@ -94,6 +96,7 @@ module Gearman
       def activate_connection(connection)
         @bad_servers.reject! { |c| c == connection }
         @job_servers << connection
+        @connection_handler.call(connection) if @connection_handler
       end
 
       def start_reconnect_thread
