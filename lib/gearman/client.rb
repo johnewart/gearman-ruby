@@ -88,7 +88,7 @@ module Gearman
                           end
               type, data = connection.read_response(remaining)
               handle_response(task, type, data)
-            end while [:work_status, :work_data].include? type
+            end while [:work_status, :work_data, :work_warning].include? type
           end
 
         else
@@ -129,11 +129,11 @@ module Gearman
           task.handle_status(numerator, denominator)
         when :work_warning
           handle, message = data.split("\0", 2)
-          Util.logger.debug "Got WORK_WARNING for #{handle}: '#{message}'"
+          logger.warn "Got WORK_WARNING for #{handle}: '#{message}'"
           task.handle_warning(message)
         when :work_data
           handle, work_data = data.split("\0", 2)
-          Util.logger.debug "Got WORK_DATA for #{handle} with #{work_data ? work_data.size : '0'} byte(s) of data"
+          logger.debug "Got WORK_DATA for #{handle} with #{work_data ? work_data.size : '0'} byte(s) of data"
           task.handle_data(work_data)
         else
           # Not good.
