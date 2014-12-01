@@ -73,39 +73,22 @@ loop { w.work }
 
 * John Ewart <john@johnewart.net> (current maintainer, author of re-write)
 
-<<<<<<< HEAD
 ## Contributors (past and present)
 
 * Kim Altintop
-=======
-## Contributors
-
->>>>>>> New version (4.0) -- substantial rewrite
 * Josh Black (raskchanky)
 * Colin Curtin (perplexes)
 * Brian Cobb (bcobb)
 * Pablo A. Delgado (pablete)
-<<<<<<< HEAD
 * Daniel Erat
 * Antonio Garrote 
 * Stefan Kaes (skaes)
 * Ladislav Martincik
-=======
-* Stefan Kaes (skaes)
->>>>>>> New version (4.0) -- substantial rewrite
 * Mauro Pompilio (malditogeek)
 * Lee Reilly (leereilly)
 * Clint Shryock (catsby)
 * Andy Triggs (andyt)
 
-
-<<<<<<< HEAD
-
 ## License
 
 Released under the MIT license, originally developed by XING AG. See the LICENSE file for further details.
-=======
-## License
-
-Released under the MIT license. See the file LICENSE for further details.
->>>>>>> New version (4.0) -- substantial rewrite
