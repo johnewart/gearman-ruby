@@ -1,14 +1,21 @@
 $LOAD_PATH.unshift("../lib")
 require 'rubygems'
-require '../lib/gearman'
+require 'gearman'
 
-servers = ['localhost:4730', 'localhost:4731']
+# Control logger
+l = Logger.new($stdout)
+l.level = Logger::DEBUG
+Gearman.logger=l
+
+servers = ['localhost:4730']
   
 client = Gearman::Client.new(servers)
 taskset = Gearman::TaskSet.new(client)
 
-task = Gearman::Task.new('sleep', 20)
-task.on_complete {|d| puts d }
+task = Gearman::Task.new('ToUpper', 'samwise')
+task.on_complete {|d| puts "Upper: #{d}" }
 
+# Add task to taskset
 taskset.add_task(task)
-taskset.wait(100)
+# Submit taskset and wait forever for completion
+taskset.wait_forever
