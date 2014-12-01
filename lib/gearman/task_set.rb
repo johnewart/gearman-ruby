@@ -30,7 +30,7 @@ module Gearman
         nil
       end
 
-      while not @tasks_in_progress.empty?
+      while @tasks_in_progress.length > 0
         remaining = if end_time
           (t = end_time - Time.now.to_f) > 0 ? t : 0
         else
@@ -50,7 +50,7 @@ module Gearman
 
       @finished_tasks.each do |t|
         if ( (t.background.nil? || t.background == false) && !t.successful)
-          logger.warn "GearmanRuby: TaskSet failed"
+          logger.warn 'GearmanRuby: TaskSet failed'
           return false
         end
       end
@@ -59,7 +59,7 @@ module Gearman
 
     # Wait for all tasks in set to finish, with no timeout
     def wait_forever
-	wait(nil)
+      wait(nil)
     end
 
   end
