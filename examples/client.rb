@@ -12,8 +12,8 @@ servers = ['localhost:4730']
 client = Gearman::Client.new(servers)
 taskset = Gearman::TaskSet.new(client)
 
-task = Gearman::Task.new('ToUpper', 'samwise')
-task.on_complete {|d| puts "Upper: #{d}" }
+task = Gearman::Task.new('sleep', 20)
+task.on_status {|n,d| puts "Status: #{n}/#{d} iterations complete" }
 
 # Add task to taskset
 taskset.add_task(task)

@@ -1,11 +1,8 @@
-$:.unshift File.join(File.dirname(__FILE__), '..', "lib" )
+$:.unshift '../lib'
 require 'gearman'
 
 # String reverse worker 
-
 servers = ['127.0.0.1:4730']
-
-t = nil
 jobnum = 0
 
 w = Gearman::Worker.new(servers)
