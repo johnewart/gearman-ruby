@@ -51,6 +51,19 @@ describe Gearman::Client do
 
   end
 
+  it 'propagates NetworkErrors while submitting jobs' do
+    mock_connection = double(Gearman::Connection)
+    mock_connection.stub(:send_request).and_raise(Gearman::NetworkError)
+    mock_connection.stub(:hostport).and_return("localhost:4730")
+
+    @mock_connection_pool.stub(:get_connection) { mock_connection }
+
+    task = Gearman::Task.new("queue", "data")
+
+    expect {
+      @client.submit_job(task)
+    }.to raise_error(Gearman::NetworkError)
+  end
 
 
   it "should raise a NetworkError when it didn't write as much as expected to a socket" do
