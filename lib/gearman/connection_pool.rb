@@ -5,6 +5,8 @@ module Gearman
     include Logging
 
     DEFAULT_PORT = 4730
+    TIME_BETWEEN_CHECKS = 60 #seconds
+    SLEEP_TIME = 30 #seconds
 
     def initialize(servers = [])
       @bad_servers          = []
@@ -14,9 +16,9 @@ module Gearman
       @reconnect_seconds    = 10
       @server_counter       = 0   # Round-robin distribution of requests
       @servers_mutex        = Mutex.new
+      @last_check_time      = Time.now
 
       add_servers(servers)
-      start_reconnect_thread
     end
 
     def add_connection(connection)
@@ -49,7 +51,6 @@ module Gearman
 
     def get_connection(coalesce_key = nil)
       @servers_mutex.synchronize do
-
         logger.debug "Available job servers: #{@job_servers.inspect}"
         raise NoJobServersError if @job_servers.empty?
         @server_counter += 1
@@ -62,6 +63,7 @@ module Gearman
     end
 
     def poll_connections(timeout = nil)
+      update_job_servers
       available_sockets = []
       @servers_mutex.synchronize do
         available_sockets.concat @job_servers.collect { |conn| conn.socket }
@@ -73,6 +75,7 @@ module Gearman
     end
 
     def with_all_connections(&block)
+      update_job_servers
       @servers_mutex.synchronize do
         @job_servers.each do |connection|
           begin
@@ -88,6 +91,10 @@ module Gearman
 
     private
 
+      def time_to_check_connections
+        (Time.now - @last_check_time) >= TIME_BETWEEN_CHECKS
+      end
+
       def deactivate_connection(connection)
         @job_servers.reject! { |c| c == connection }
         @bad_servers << connection
@@ -99,31 +106,35 @@ module Gearman
         @connection_handler.call(connection) if @connection_handler
       end
 
-      def start_reconnect_thread
-        Thread.new do
-          loop do
-            @servers_mutex.synchronize do
-              # If there are any failed servers, try to reconnect to them.
-              update_job_servers unless @bad_servers.empty?
-            end
-            sleep @reconnect_seconds
-          end
-        end.run
-      end
-
+      ##
+      # Check for bad servers and update the available pools
+      #
       def update_job_servers
+        # Check if it's been > TIME_BETWEEN_CHECKS or we have no good servers
+        return unless time_to_check_connections || @job_servers.empty?
+
         logger.debug "Found #{@bad_servers.size} zombie connections, checking pulse."
-        @bad_servers.each do |connection|
-          begin
-            message = "Testing server #{connection}..."
-            if connection.is_healthy?
-              logger.debug "#{message} Connection is healthy, putting back into service"
-              activate_connection(connection)
-            else
-              logger.debug "#{message} Still down."
+        @servers_mutex.synchronize do
+          @bad_servers.each do |connection|
+            begin
+              message = "Testing server #{connection}..."
+              if connection.is_healthy?
+                logger.debug "#{message} Connection is healthy, putting back into service"
+                activate_connection(connection)
+              else
+                logger.debug "#{message} Still down."
+              end
             end
           end
         end
+
+        # Sleep for a few to allow a chance for the world to become sane
+        if @job_servers.empty?
+          logger.warn "No job servers available, sleeping for #{SLEEP_TIME} seconds"
+          sleep(SLEEP_TIME)
+        end
+
+        @last_check_time = Time.now
       end
 
 
