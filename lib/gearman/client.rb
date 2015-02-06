@@ -35,7 +35,7 @@ module Gearman
     #
     # @param args  A Task to complete
     # @return      output of the task, or nil on failure
-    def do_task(task)
+    def do_task(task, timeout = nil)
 
       result = nil
       failed = false
@@ -45,7 +45,7 @@ module Gearman
 
       task_set = TaskSet.new(self)
       if task_set.add_task(task)
-        task_set.wait_forever
+        timeout.nil? ? task_set.wait_forever : task_set.wait(timeout)
       else
         raise JobQueueError, "Unable to enqueue job."
       end
