@@ -76,7 +76,7 @@ module Gearman
     ##
     # Callback for after an ability runs
     def after_ability(func, &block)
-      abilities[func].after_complete(block)
+      @abilities[func].after_complete(block)
     end
 
     ##
@@ -181,7 +181,7 @@ module Gearman
 
       loop do
         @status = :preparing
-  
+
         @connection_pool.with_all_connections do |connection|
           begin
             logger.debug "Sending GRAB_JOB to #{connection}"
@@ -190,7 +190,7 @@ module Gearman
             handle_work_message(type, data, connection)
           end while type == :job_assign
         end
-  
+
 
         logger.info "Sending PRE_SLEEP and going to sleep for #{@reconnect_sec} second(s)"
         @connection_pool.with_all_connections do |connection|
@@ -223,7 +223,7 @@ module Gearman
       # If 30 seconds have passed, then wakeup
       time_asleep = (Time.now - time_fell_asleep).to_f
       @status = :wakeup if time_asleep >= 30
-  
+
       # We didn't sleep for >= 30s, so we need to check for a NOOP
       if (@status == :waiting)
         @connection_pool.with_all_connections do |connection|
