@@ -54,7 +54,7 @@ describe Gearman::Client do
   it 'propagates NetworkErrors while submitting jobs' do
     mock_connection = double(Gearman::Connection)
     mock_connection.stub(:send_request).and_raise(Gearman::NetworkError)
-    mock_connection.stub(:hostport).and_return("localhost:4730")
+    mock_connection.stub(:to_host_port).and_return("localhost:4730")
 
     @mock_connection_pool.stub(:get_connection) { mock_connection }
 
