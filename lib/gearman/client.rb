@@ -110,7 +110,7 @@ module Gearman
           raise ProtocolError, message
         end
       rescue NetworkError
-        message = "Network error on read from #{connection.hostport} while adding job, marking server bad"
+        message = "Network error on read from #{connection.to_host_port} while adding job, marking server bad"
         logger.error message
         raise NetworkError, message
       rescue NoJobServersError

@@ -133,8 +133,8 @@ module Gearman
 
     def send_update(req, timeout = nil)
       len = with_safe_socket_op{ socket.write(req) }
-      if len != req.size
-        raise_exception("Wrote #{len} instead of #{req.size}")
+      if len != req.bytesize
+        raise_exception("Wrote #{len} instead of #{req.bytesize}")
       end
     end
 
