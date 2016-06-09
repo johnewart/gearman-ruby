@@ -3,3 +3,12 @@ rvm:
  - 2.1.0
  - 2.0.0
  - 1.9.3
+
+deploy:
+  provider: rubygems
+  gem: gearman-ruby
+  api_key:
+    secure: "aH9rBIqZlR7QDxZB+hzayULMsYGcGEmwfIQ6L1hrZeluN2OTBrbuci7+ztSCWqzYEnT7M40TLrWHgmOOeEwg2blaKcArwAxB/s4HZvJR8oOPSu0TZ8qYQmr2InRfYDZCe5b9OV40XI+bqn2OHi+VfHN8HFWwQ6BCCZSSpZemVaQ="
+  on:
+    branch: master
+    rvm: 2.1.0
