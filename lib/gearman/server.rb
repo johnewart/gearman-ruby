@@ -77,7 +77,7 @@ class Server
     workers = []
     if response = send_command('workers')
       response.split("\n").each do |line|
-        if line.match /^(\d+)\s([a-z0-9\:\.]+)\s([^\s]*)\s:\s([a-z_\s\t]+)$/
+        if line.match /^(\d+)\s([a-z0-9\:\.]+)\s([^\s]*)\s:\s([a-z0-9_\s\t]+)$/
           func_parts = $4.split(' ')
           functions = []
           while !func_parts.empty?
