@@ -44,7 +44,7 @@ module Gearman
       #
       # @param func     function name (without prefix)
       #
-      def after_complete(&block)
+      def after_complete(block)
         @on_complete = block
       end
 
