@@ -17,17 +17,29 @@ module Gearman
       @task_create_timeout_sec = 10
     end
 
-    ##
-    # Set the options
+
+    ## 
+    # Set a single option 
     #
-    # @options options to pass to the servers  i.e "exceptions"
-    def set_options(opts)
+    # @opt an option to set on the server
+    def set_option(opt) 
       @connection_pool.with_all_connections do |conn|
-        logger.debug "Send options request with #{opts}"
-        request = Packet.pack_request("option_req", opts)
+        logger.debug "Send options request with #{opt}"
+        request = Packet.pack_request("option_req", opt)
         response = conn.send_request(request)
         raise ProtocolError, response[1] if response[0]==:error
       end
+    end
+
+    ##
+    # Set some options
+    #
+    # Note: singletons are coalesced into a list for backwards compatibility with this method name
+    #
+    # @options a list of options to pass to the servers  i.e "exceptions"
+    def set_options(opts)
+      opt_array = [*opts]
+      opt_array.each { |opt| set_option(opt) }
     end
 
     ##
@@ -35,7 +47,7 @@ module Gearman
     #
     # @param args  A Task to complete
     # @return      output of the task, or nil on failure
-    def do_task(task)
+    def do_task(task, timeout = nil)
 
       result = nil
       failed = false
@@ -45,7 +57,7 @@ module Gearman
 
       task_set = TaskSet.new(self)
       if task_set.add_task(task)
-        task_set.wait_forever
+        timeout.nil? ? task_set.wait_forever : task_set.wait(timeout)
       else
         raise JobQueueError, "Unable to enqueue job."
       end
