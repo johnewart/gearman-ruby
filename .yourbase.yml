@@ -1,1 +1,15 @@
-johnewart-gearman-ruby.yml
+dependencies:
+  build:
+    - ruby:2.4.5
+
+build_targets:
+  - name: default
+    commands:
+      - gem install bundler
+      - bundle install 
+      - bundle exec rake
+
+ci:
+  builds:
+    - name: build_gem
+      build_targets: default
