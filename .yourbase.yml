@@ -15,4 +15,4 @@ build_targets:
 ci:
   builds:
     - name: build_gem
-      build_targets: default
+      build_target: default
