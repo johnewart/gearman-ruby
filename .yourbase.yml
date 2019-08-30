@@ -8,6 +8,7 @@ build_targets:
       - gem install bundler
       - bundle install 
       - bundle exec rake
+      
   - name: release
     commands:
       - echo "RELEASE"
