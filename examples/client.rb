@@ -19,3 +19,5 @@ task.on_status {|n,d| puts "Status: #{n}/#{d} iterations complete" }
 taskset.add_task(task)
 # Submit taskset and wait forever for completion
 taskset.wait_forever
+
+puts "Ohai"
